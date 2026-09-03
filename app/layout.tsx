@@ -1,16 +1,18 @@
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
-import { Fraunces, Instrument_Sans, IBM_Plex_Mono } from "next/font/google";
+import { IBM_Plex_Mono, Source_Serif_4, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
-const serif = Fraunces({
+const serif = Source_Serif_4({
   variable: "--font-serif",
   subsets: ["latin"],
+  weight: ["400", "600"],
 });
 
-const sans = Instrument_Sans({
+const sans = Space_Grotesk({
   variable: "--font-sans",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
 const mono = IBM_Plex_Mono({
@@ -20,10 +22,14 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Index x Granola",
+  title: "Index × Granola",
   description:
-    "Pebble Index 01 talks to Granola meeting notes. Afterthoughts, 30-second prep, and open loops.",
+    "Speak to Pebble Index 01. Get answers from your Granola notes.",
   robots: { index: false, follow: false },
+};
+
+export const viewport = {
+  themeColor: "#f7f7f2",
 };
 
 export default function RootLayout({
@@ -36,7 +42,7 @@ export default function RootLayout({
       lang="en"
       className={`${serif.variable} ${sans.variable} ${mono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[var(--bg)] text-[var(--ink)]">
+      <body className="min-h-full flex flex-col bg-[var(--paper)] text-[var(--ink)]">
         {children}
       </body>
     </html>

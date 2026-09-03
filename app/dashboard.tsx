@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { RingMark } from "./mark";
 
 export type Capture = {
   id: string;
@@ -40,30 +41,31 @@ const MODES: {
     id: "afterthought",
     kicker: "01",
     title: "Afterthought",
-    body: "Speak a forgotten point. We pull that Granola summary, weave your thought in, save the blend on this site, and push “idea added to [meeting].” Granola is not edited.",
+    body: "A thought that belongs on a meeting you already captured. We pull that Granola summary, weave yours in, save it here, and push it to your phone. Granola is not edited.",
     placeholder: "Add this to the last meeting: send Brad the deck before Thursday.",
     sample:
       "Add this to the last meeting: we should send Brad the deck before Thursday, and don't mention pricing yet.",
-    output: "Website note + push notification",
+    output: "Note here + lock-screen push",
   },
   {
     id: "prep",
     kicker: "02",
     title: "Prep me",
-    body: "30 seconds before a call or a Sorta<> pitch. Visual canvas recordings are titled Sorta<>Name Xxx. We take the last matching note unless you ask for a wider recap.",
-    placeholder: "Prep me for my next pitch of the visual canvas. What should I say, and what should I not say?",
+    body: "Thirty seconds before a call. Visual canvas recordings are titled Sorta<>Name Xxx. We use the latest match unless you ask for a wider recap.",
+    placeholder:
+      "Prep me for my next pitch of the visual canvas. What should I say, and what should I not say?",
     sample:
       "Prep me for my next pitch of the visual canvas. What should I repeat, and what should I not say?",
-    output: "Short push notification.",
+    output: "Lock-screen push",
   },
   {
     id: "todos",
     kicker: "03",
     title: "What I owe",
-    body: "Open loops from this week's notes, or from one client. Mine vs theirs. Dates kept if Granola had them.",
+    body: "Open loops from this week, or from one client. Yours vs theirs. Dates kept if Granola had them.",
     placeholder: "What do I need to do from this week's client meetings?",
     sample: "What do I need to do from this week's client meetings?",
-    output: "Short push notification.",
+    output: "Lock-screen push",
   },
 ];
 
@@ -71,6 +73,12 @@ function kindLabel(kind: Capture["kind"]) {
   if (kind === "afterthought") return "Afterthought";
   if (kind === "prep") return "Prep";
   return "Open loops";
+}
+
+function kindDot(kind: Capture["kind"]) {
+  if (kind === "afterthought") return "bg-[var(--pebble)]";
+  if (kind === "prep") return "bg-[var(--olive)]";
+  return "bg-[#febe29]";
 }
 
 export function Dashboard({ initial }: { initial: StatusPayload }) {
@@ -146,46 +154,41 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-5 py-10 sm:px-8 sm:py-14">
-      <header className="flex flex-col gap-6 border-b border-[var(--line)] pb-8 sm:flex-row sm:items-end sm:justify-between">
-        <div className="max-w-2xl">
-          <p className="text-[11px] tracking-[0.28em] uppercase text-[var(--gold)]">
-            Index 01 · Granola MCP
-          </p>
-          <h1 className="font-serif mt-3 text-4xl leading-[1.05] sm:text-6xl">
-            Meeting memory,
-            <span className="italic text-[var(--gold-2)]"> on a ring.</span>
-          </h1>
-          <p className="mt-4 max-w-xl text-[15px] leading-7 text-[var(--muted)]">
-            Double-click-hold on Index. Ask Granola. Get a lock-screen
-            notification. Afterthoughts also land here as a combined note
-            (Granola summary + what you just said). That plus the push is
-            the product. Granola itself stays read-only.
+    <div className="mx-auto flex w-full max-w-[1080px] flex-col gap-12 px-5 py-6 sm:px-8 sm:py-10">
+      <header className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2.5">
+          <RingMark size={30} />
+          <p className="text-[15px] leading-none tracking-tight">
+            <span className="font-medium">Index</span>
+            <span className="mx-1.5 text-[var(--mute)]">×</span>
+            <span className="font-serif">Granola</span>
           </p>
         </div>
-        <div className="flex flex-col items-start gap-3 sm:items-end">
+        <div className="flex items-center gap-3">
           <span
-            className={`rounded-full border px-3 py-1 text-xs tracking-wide ${
-              status.connected
-                ? "border-[var(--gold)] text-[var(--gold-2)]"
-                : "border-[var(--line)] text-[var(--muted)]"
-            }`}
+            className="hidden items-center gap-2 text-[13px] text-[var(--mute)] sm:flex"
           >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                status.connected ? "bg-[var(--olive)]" : "bg-[var(--steel)]"
+              }`}
+            />
             {status.connected
-              ? `Granola · ${status.account?.email ?? "connected"}`
-              : "Granola · not connected"}
+              ? status.account?.email ?? "Granola connected"
+              : "Granola not connected"}
           </span>
           {status.connected ? (
             <button
+              type="button"
               onClick={() => void disconnect()}
-              className="text-xs text-[var(--muted)] underline-offset-4 hover:underline"
+              className="text-[13px] text-[var(--mute)] underline-offset-4 hover:text-[var(--ink)] hover:underline"
             >
               Disconnect
             </button>
           ) : (
             <a
               href="/api/granola/connect"
-              className="rounded-full bg-[var(--gold)] px-4 py-2 text-sm font-medium text-[var(--bg)]"
+              className="rounded-full bg-[var(--olive)] px-3.5 py-1.5 text-[13px] font-medium text-white"
             >
               Connect Granola
             </a>
@@ -193,43 +196,69 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
         </div>
       </header>
 
+      <section className="grid items-end gap-10 lg:grid-cols-[1.15fr_0.85fr]">
+        <div>
+          <h1 className="font-serif text-[2.35rem] leading-[1.05] tracking-[-0.03em] sm:text-[3.35rem]">
+            Meeting notes
+            <br />
+            you can speak.
+          </h1>
+          <p className="mt-5 max-w-md text-[15px] leading-7 text-[var(--mute-2)]">
+            Double-click-hold on Index. We look up Granola. You get a lock-screen
+            answer. Afterthoughts stay here as a combined note. Granola itself
+            stays read-only.
+          </p>
+        </div>
+        <EpaperPreview />
+      </section>
+
       {error ? (
-        <div className="rounded-2xl border border-[var(--danger)]/40 bg-[var(--danger)]/10 px-4 py-3 text-sm text-[var(--danger)]">
+        <div className="rounded-lg bg-[#fdeee9] px-4 py-3 text-sm text-[var(--danger)]">
           {error}
         </div>
       ) : null}
 
       {status.claimUrl ? (
-        <p className="text-sm text-[var(--muted)]">
-          The demo database expires in 72 hours unless you{" "}
-          <a className="text-[var(--gold-2)] underline-offset-4 hover:underline" href={status.claimUrl}>
-            claim this Neon database
+        <p className="text-sm text-[var(--mute)]">
+          This demo database lasts 72 hours unless you{" "}
+          <a
+            className="text-[var(--olive-ink)] underline decoration-[var(--hairline)] underline-offset-4 hover:decoration-[var(--olive)]"
+            href={status.claimUrl}
+          >
+            claim it in Neon
           </a>
           .
         </p>
       ) : null}
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-3 md:grid-cols-3">
         {MODES.map((item) => {
           const selected = item.id === mode;
           return (
             <button
+              type="button"
               key={item.id}
               onClick={() => {
                 setMode(item.id);
                 setUtterance(item.sample);
                 setResult(null);
               }}
-              className={`rounded-3xl border p-5 text-left transition ${
+              className={`rounded-lg p-5 text-left transition ${
                 selected
-                  ? "border-[var(--gold)] bg-[var(--bg-2)]"
-                  : "border-[var(--line)] bg-transparent hover:border-[var(--gold)]/40"
+                  ? "bg-[var(--elevated)] hairline"
+                  : "bg-[var(--paper-2)] hover:bg-[var(--elevated)]"
               }`}
             >
-              <p className="font-mono text-[11px] text-[var(--gold)]">{item.kicker}</p>
-              <h2 className="font-serif mt-2 text-2xl">{item.title}</h2>
-              <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{item.body}</p>
-              <p className="mt-4 text-[11px] uppercase tracking-[0.18em] text-[var(--gold-2)]">
+              <p className="font-mono text-[11px] text-[var(--mute)]">
+                {item.kicker}
+              </p>
+              <h2 className="font-serif mt-2 text-[1.45rem] leading-tight tracking-[-0.02em]">
+                {item.title}
+              </h2>
+              <p className="mt-3 text-[13.5px] leading-6 text-[var(--mute-2)]">
+                {item.body}
+              </p>
+              <p className="mt-4 text-[12px] text-[var(--olive-ink)]">
                 {item.output}
               </p>
             </button>
@@ -237,55 +266,67 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
         })}
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-[28px] bg-[var(--paper)] p-6 text-[var(--paper-ink)] sm:p-8">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-[#8a7b66]">
-            Rehearse without the ring
-          </p>
-          <h2 className="font-serif mt-2 text-3xl">{active.title}</h2>
-          <p className="mt-2 text-sm leading-6 text-[#6f6354]">
-            Same tools the ring calls. Use this to record the X video if the
-            double-click path is being fussy, then do it live on Index.
+      <section className="grid gap-3 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="rounded-lg bg-[var(--elevated)] p-6 hairline sm:p-8">
+          <p className="text-[12px] text-[var(--mute)]">Rehearse without the ring</p>
+          <h2 className="font-serif mt-1 text-[1.85rem] tracking-[-0.02em]">
+            {active.title}
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-[var(--mute-2)]">
+            Same tools the ring calls. Use this if double-click is being fussy,
+            then do it live on Index.
           </p>
           <textarea
             value={utterance}
             onChange={(event) => setUtterance(event.target.value)}
-            className="mt-5 min-h-32 w-full rounded-2xl border border-[#e2d8c8] bg-white px-4 py-3 text-[15px] leading-6 outline-none"
+            className="mt-5 min-h-32 w-full rounded-md border-0 bg-[var(--paper)] px-3.5 py-3 text-[15px] leading-6 text-[var(--ink)] outline-none hairline"
             placeholder={active.placeholder}
           />
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <button
+              type="button"
               disabled={busy || !status.connected}
               onClick={() => void tryTool()}
-              className="rounded-full bg-[var(--bg)] px-5 py-2 text-sm text-[var(--ink)] disabled:opacity-40"
+              className="rounded-full bg-[var(--ink)] px-4 py-2 text-sm text-white disabled:opacity-35"
             >
               {busy ? "Asking Granola…" : "Run this"}
             </button>
             {!status.connected ? (
-              <span className="text-sm text-[#8a7b66]">Connect Granola first.</span>
+              <span className="text-sm text-[var(--mute)]">
+                Connect Granola first.
+              </span>
             ) : null}
           </div>
           {result ? (
-            <div className="mt-6 rounded-2xl bg-[#231c14] p-4 text-[var(--paper)]">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--gold)]">
-                Ring-sized answer
+            <div className="epaper-screen mt-6 rounded-md px-4 py-3">
+              <p className="text-[11px] tracking-wide text-[var(--pebble)]">
+                Pebble Index
               </p>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-6">{result}</p>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-6">
+                {result}
+              </p>
             </div>
           ) : null}
         </div>
 
-        <div className="rounded-[28px] border border-[var(--line)] p-6 sm:p-8">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-[var(--gold)]">
+        <div className="rounded-lg bg-[#1c1c1c] p-6 text-[#d8d8d4] sm:p-8">
+          <p className="text-[12px] text-[#9a9a94]">Pair the ring</p>
+          <h2 className="mt-1 text-[1.15rem] font-medium tracking-tight text-white">
             Pebble setup
-          </p>
-          <ol className="mt-4 space-y-3 text-sm leading-6 text-[var(--muted)]">
-            <li>1. Connect Granola on this page. Free tier is fine (last 30 days).</li>
-            <li>2. In the Pebble app: Index → MCP & Tool Settings → new sandbox group. Model: Default or High Capability (cloud).</li>
-            <li>3. Add an MCP server. Streamable HTTP on. URL below. Authorization: the Bearer token.</li>
-            <li>4. Tick the <span className="text-[var(--ink)]">ring_voice</span> prompt.</li>
-            <li>5. Index settings → Double click and hold → this sandbox.</li>
-            <li>6. Keep single-click as normal notes. Double-click is Granola.</li>
+          </h2>
+          <ol className="mt-4 space-y-2.5 text-[13px] leading-6 text-[#bdbdb6]">
+            <li>1. Connect Granola on this page. Free tier is fine.</li>
+            <li>
+              2. Pebble app → Index → MCP & Tool Settings → new sandbox. Model:
+              Default or High Capability (cloud).
+            </li>
+            <li>3. Add MCP. Streamable HTTP on. URL and Bearer below.</li>
+            <li>
+              4. Enable the{" "}
+              <span className="text-white">ring_voice</span> prompt.
+            </li>
+            <li>5. Double click and hold → this sandbox.</li>
+            <li>6. Single-click stays normal notes.</li>
           </ol>
           <CopyField
             label="MCP URL"
@@ -294,54 +335,50 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
             onCopy={() => void copy("url", status.mcpUrl)}
           />
           <CopyField
-            label="Authorization header"
+            label="Authorization"
             value={status.pebbleToken ? `Bearer ${status.pebbleToken}` : ""}
             copied={copied === "token"}
-            onCopy={() =>
-              void copy("token", `Bearer ${status.pebbleToken}`)
-            }
+            onCopy={() => void copy("token", `Bearer ${status.pebbleToken}`)}
           />
         </div>
       </section>
 
       <section>
-        <div className="mb-4 flex items-end justify-between">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.22em] text-[var(--gold)]">
-              Combined notes
-            </p>
-            <h2 className="font-serif mt-1 text-3xl">Afterthoughts and briefs</h2>
+            <p className="text-[12px] text-[var(--mute)]">Combined notes</p>
+            <h2 className="font-serif mt-1 text-[1.85rem] tracking-[-0.02em]">
+              Afterthoughts and briefs
+            </h2>
           </div>
-          <p className="max-w-sm text-right text-xs leading-5 text-[var(--muted)]">
-            This is the combined note: Granola summary plus what you
-            said. The ring only gets the clipped push. Nothing is written
-            back to Granola.
+          <p className="max-w-sm text-[13px] leading-5 text-[var(--mute)] sm:text-right">
+            Granola summary plus what you said. The ring only gets the clipped
+            push.
           </p>
         </div>
         {status.captures.length === 0 ? (
-          <p className="rounded-3xl border border-dashed border-[var(--line)] px-5 py-10 text-sm text-[var(--muted)]">
+          <p className="rounded-lg bg-[var(--paper-2)] px-5 py-10 text-sm text-[var(--mute)]">
             Nothing yet. Run a rehearsal above, or double-click the ring.
           </p>
         ) : (
-          <div className="grid gap-3">
+          <div className="grid gap-2">
             {status.captures.map((capture) => (
               <article
                 key={capture.id}
-                className="rounded-3xl border border-[var(--line)] bg-[var(--bg-2)] p-5"
+                className="rounded-lg bg-[var(--elevated)] p-5 hairline"
               >
-                <div className="flex flex-wrap items-center gap-3 text-[11px] uppercase tracking-[0.16em] text-[var(--gold)]">
+                <div className="flex flex-wrap items-center gap-2.5 text-[12px] text-[var(--mute)]">
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${kindDot(capture.kind)}`}
+                  />
                   <span>{kindLabel(capture.kind)}</span>
-                  <span className="text-[var(--muted)]">
+                  <span>
                     {new Date(capture.created_at).toLocaleString()}
                   </span>
-                  {capture.title ? (
-                    <span className="text-[var(--muted)]">{capture.title}</span>
-                  ) : null}
+                  {capture.title ? <span>{capture.title}</span> : null}
                 </div>
-                <p className="mt-3 text-sm leading-6 text-[var(--ink)]">
-                  {capture.output}
-                </p>
-                <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
+                <p className="mt-3 text-sm leading-6">{capture.output}</p>
+                <p className="mt-3 text-[13px] leading-5 text-[var(--mute)]">
                   You said: {capture.input}
                 </p>
               </article>
@@ -350,13 +387,33 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
         )}
       </section>
 
-      <footer className="border-t border-[var(--line)] pt-6 text-xs leading-5 text-[var(--muted)]">
-        Built for a one-take Index 01 demo. Meeting lookup uses Granola MCP on
-        the free plan: personal notes, last 30 days, no transcripts. Visual
-        canvas pitches match notes titled Sorta{"<>"}Name Xxx. Prep defaults
-        to the most recent matching meeting when you name a company or person.
-        Say “this week” if you want a wider recap.
+      <footer className="border-t border-[var(--hairline)] pt-5 text-[12px] leading-5 text-[var(--mute)]">
+        Free Granola: last 30 days, summaries, no transcripts. Visual canvas
+        pitches match notes titled Sorta{"<>"}Name Xxx. Say “this week” for a
+        wider recap.
       </footer>
+    </div>
+  );
+}
+
+function EpaperPreview() {
+  return (
+    <div className="epaper-screen relative mx-auto w-full max-w-sm rounded-[1.15rem] px-5 py-4 sm:ml-auto">
+      <div className="mb-3 flex items-center justify-between text-[11px] text-[#8d8d86]">
+        <span>Index 01</span>
+        <span>now</span>
+      </div>
+      <p className="text-[11px] tracking-wide text-[var(--pebble)]">Pebble</p>
+      <p className="mt-1 font-serif text-[1.35rem] leading-snug text-white">
+        Idea added to Sorta{"<>"}Nikita Xxx
+      </p>
+      <p className="mt-2 text-[13px] leading-5 text-[var(--epaper-ink)]">
+        Send Brad the deck before Thursday. Don’t mention pricing.
+      </p>
+      <div className="mt-4 flex items-center gap-2 text-[11px] text-[#8d8d86]">
+        <RingMark size={16} />
+        Double-click-hold
+      </div>
     </div>
   );
 }
@@ -374,19 +431,18 @@ function CopyField({
 }) {
   return (
     <div className="mt-5">
-      <div className="mb-2 flex items-center justify-between">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">
-          {label}
-        </p>
+      <div className="mb-1.5 flex items-center justify-between">
+        <p className="text-[11px] text-[#8a8a84]">{label}</p>
         <button
+          type="button"
           onClick={onCopy}
           disabled={!value}
-          className="text-[11px] text-[var(--gold-2)] disabled:opacity-40"
+          className="text-[11px] text-[var(--pebble)] disabled:opacity-40"
         >
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
-      <code className="block overflow-x-auto rounded-xl bg-black/30 px-3 py-2 font-mono text-[11px] text-[var(--ink)]">
+      <code className="block overflow-x-auto rounded-md bg-black/40 px-3 py-2 font-mono text-[11px] text-[#e8e8e2]">
         {value || "Available after the database boots"}
       </code>
     </div>
