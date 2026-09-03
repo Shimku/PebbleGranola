@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, Newsreader, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
@@ -25,12 +25,23 @@ const mono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Index × Granola",
   description:
-    "Speak to Pebble Index 01. Get answers from your Granola notes.",
+    "Pair Pebble Index 01 with Granola. Afterthoughts, prep, and open loops.",
   robots: { index: false, follow: false },
+  appleWebApp: {
+    capable: true,
+    title: "Index × Granola",
+    statusBarStyle: "default",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
-export const viewport = {
+export const viewport: Viewport = {
   themeColor: "#f7f7f2",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -43,7 +54,7 @@ export default function RootLayout({
       lang="en"
       className={`${serif.variable} ${sans.variable} ${mono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-[var(--paper)] text-[var(--ink)]">
+      <body className="min-h-dvh bg-[var(--paper)] text-[var(--ink)]">
         {children}
       </body>
     </html>
