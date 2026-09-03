@@ -40,17 +40,17 @@ const MODES: {
     id: "afterthought",
     kicker: "01",
     title: "Afterthought",
-    body: "Speak a forgotten point. We pull the matching Granola summary, weave your thought in, and keep the blend here. Granola stays read-only.",
+    body: "Speak a forgotten point. We pull that Granola summary, weave your thought in, save the blend on this site, and push “idea added to [meeting].” Granola is not edited.",
     placeholder: "Add this to the last meeting: send Brad the deck before Thursday.",
     sample:
       "Add this to the last meeting: we should send Brad the deck before Thursday, and don't mention pricing yet.",
-    output: "Saved blend + Pebble notification. Optionally a Pebble note.",
+    output: "Website note + push notification",
   },
   {
     id: "prep",
     kicker: "02",
     title: "Prep me",
-    body: "30 seconds before a call or a pitch. We take the last matching Granola note unless you ask for a wider recap.",
+    body: "30 seconds before a call or a Sorta<> pitch. Visual canvas recordings are titled Sorta<>Name Xxx. We take the last matching note unless you ask for a wider recap.",
     placeholder: "Prep me for my next pitch of the visual canvas. What should I say, and what should I not say?",
     sample:
       "Prep me for my next pitch of the visual canvas. What should I repeat, and what should I not say?",
@@ -109,20 +109,24 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
     setError(null);
     setResult(null);
     try {
+      const wantsPitch =
+        /pitch/i.test(utterance) ||
+        /visual canvas/i.test(utterance) ||
+        /\bsorta\b/i.test(utterance);
       const args =
         mode === "afterthought"
           ? { thought: utterance }
-          : { who_or_topic: utterance, scope: mode === "prep" ? "pitch" : "recent" };
+          : {
+              who_or_topic: utterance,
+              scope: mode === "prep" ? (wantsPitch ? "pitch" : "last") : "recent",
+            };
 
       const response = await fetch("/api/try", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tool: mode,
-          args:
-            mode === "prep" && !/pitch/i.test(utterance)
-              ? { who_or_topic: utterance, scope: "last" }
-              : args,
+          args,
         }),
       });
       const json = (await response.json()) as { text?: string; error?: string };
@@ -153,9 +157,10 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
             <span className="italic text-[var(--gold-2)]"> on a ring.</span>
           </h1>
           <p className="mt-4 max-w-xl text-[15px] leading-7 text-[var(--muted)]">
-            Double-click-hold on Index. Ask Granola. Get a notification you can
-            actually read while walking. Afterthoughts are saved here because
-            Granola MCP cannot write back.
+            Double-click-hold on Index. Ask Granola. Get a lock-screen
+            notification. Afterthoughts also land here as a combined note
+            (Granola summary + what you just said). That plus the push is
+            the product. Granola itself stays read-only.
           </p>
         </div>
         <div className="flex flex-col items-start gap-3 sm:items-end">
@@ -303,13 +308,14 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
         <div className="mb-4 flex items-end justify-between">
           <div>
             <p className="text-[11px] uppercase tracking-[0.22em] text-[var(--gold)]">
-              Saved here
+              Combined notes
             </p>
             <h2 className="font-serif mt-1 text-3xl">Afterthoughts and briefs</h2>
           </div>
           <p className="max-w-sm text-right text-xs leading-5 text-[var(--muted)]">
-            This is the durable copy. The ring only gets the clipped
-            notification. Nothing is written back to Granola.
+            This is the combined note: Granola summary plus what you
+            said. The ring only gets the clipped push. Nothing is written
+            back to Granola.
           </p>
         </div>
         {status.captures.length === 0 ? (
@@ -346,9 +352,10 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
 
       <footer className="border-t border-[var(--line)] pt-6 text-xs leading-5 text-[var(--muted)]">
         Built for a one-take Index 01 demo. Meeting lookup uses Granola MCP on
-        the free plan: personal notes, last 30 days, no transcripts. Prep
-        defaults to the most recent matching meeting when you name a company or
-        person. Say “this week” if you want a wider recap.
+        the free plan: personal notes, last 30 days, no transcripts. Visual
+        canvas pitches match notes titled Sorta{"<>"}Name Xxx. Prep defaults
+        to the most recent matching meeting when you name a company or person.
+        Say “this week” if you want a wider recap.
       </footer>
     </div>
   );

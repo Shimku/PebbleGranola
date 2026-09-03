@@ -26,7 +26,7 @@ Routing:
 If they name a person, company, client, or product, pass it as meeting_hint or who_or_topic.
 If they say "last meeting", "the call I just had", or name nothing, omit the hint so we use the most recent Granola note.
 If they say "last call with X" use scope "last". If they say "this week" or "all meetings with X" use scope "recent".
-For pitch rehearsal use scope "pitch".`;
+Visual canvas / Sorta pitches are Granola notes titled like "Sorta<>Name Xxx". If they say visual canvas, Sorta, or a Sorta<> title, pass those words through. Use scope "pitch" for coaching.`;
 
 export const RING_PROMPT = {
   name: "ring_voice",
@@ -71,7 +71,7 @@ export const TOOLS = [
           type: "string",
           enum: ["last", "recent", "pitch"],
           description:
-            "last = most recent matching meeting. recent = a few recent matching meetings. pitch = coaching from recorded pitches. Default last.",
+            "last = most recent matching meeting. recent = a few recent matching meetings. pitch = coaching from Sorta<> / visual canvas recordings. Default last.",
         },
       },
       required: ["who_or_topic"],
@@ -116,9 +116,10 @@ function asMode(value: unknown, fallback: MatchMode): MatchMode {
 async function matchedMeetings(
   hint: string | undefined,
   mode: MatchMode,
+  preferSorta = false,
 ): Promise<MeetingHit[]> {
   const all = await listRecentMeetings();
-  return pickMeetings(all, hint, mode);
+  return pickMeetings(all, hint, mode, { preferSorta });
 }
 
 export async function refreshAccount(): Promise<void> {
@@ -187,7 +188,11 @@ async function runAfterthought(args: Record<string, unknown>): Promise<ToolRun> 
     query,
     meetings.map((meeting) => meeting.id),
   );
-  const text = clipForRing(raw);
+  const prefix = meetings[0]
+    ? `Idea added to ${meetings[0].title}.`
+    : "Idea added.";
+  const body = clipForRing(raw, 380 - prefix.length - 1);
+  const text = `${prefix} ${body}`.trim();
   const title = meetings[0]?.title ?? "Afterthought";
 
   await insertCapture({
@@ -210,12 +215,12 @@ async function runPrep(args: Record<string, unknown>): Promise<ToolRun> {
   const scopeArg = str(args.scope);
   const pitch = scopeArg === "pitch";
   const mode: MatchMode = pitch ? "recent" : asMode(scopeArg, "last");
-  const meetings = await matchedMeetings(topic, mode);
+  const meetings = await matchedMeetings(topic, mode, pitch);
 
   const query = pitch
     ? [
         `I am about to pitch this idea again: ${topic}.`,
-        `I have been recording test pitches and related conversations in Granola.`,
+        `I have been recording test pitches in Granola. Those notes are usually titled like "Sorta<>Name Xxx".`,
         meetings.length
           ? `Prefer these notes:\n${summarizeMeetingsForPrompt(meetings)}`
           : `Search my last 30 days of Granola notes for this idea.`,
