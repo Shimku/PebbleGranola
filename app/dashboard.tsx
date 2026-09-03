@@ -192,10 +192,11 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
       </header>
 
       <section className="border-b border-[var(--hairline)] py-10 sm:py-14">
-        <h1 className="font-serif max-w-[12ch] text-[2.55rem] leading-[1.02] text-[var(--ink-2)] sm:text-[3.75rem] lg:text-[4.25rem]">
+        <h1 className="font-serif text-[2.45rem] leading-[1.05] text-[var(--ink-2)] sm:text-[3.6rem] lg:text-[4.1rem]">
           Speak it to Index.
           <br />
-          We <span className="hl">look up</span> Granola.
+          We <span className="hl">look up</span>{" "}
+          <span className="font-serif-italic">Granola</span>.
         </h1>
         <p className="mt-6 max-w-lg text-[15px] leading-7 text-[var(--mute-2)]">
           Double-click-hold. Afterthoughts stay here as a combined note. Granola
@@ -358,7 +359,7 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
           </p>
         </div>
         {status.captures.length === 0 ? (
-          <p className="rounded-[14px] bg-[var(--paper-2)] px-5 py-12 text-sm text-[var(--mute)]">
+          <p className="rounded-[14px] bg-[var(--elevated)] px-5 py-12 text-sm text-[var(--mute)] hairline">
             Nothing yet. Run a rehearsal above, or double-click the ring.
           </p>
         ) : (
@@ -419,14 +420,14 @@ function DeskPreview() {
         <p className="font-serif mt-5 text-[16px] text-[var(--ink-2)]">
           Afterthought
         </p>
-        <ul className="mt-2 space-y-1 text-[14px] leading-6 text-[var(--mute-2)]">
+        <ul className="note-list mt-2 space-y-1 text-[14px] leading-6 text-[var(--mute-2)]">
           <li>Send Brad the deck before Thursday.</li>
           <li>Don’t mention pricing yet.</li>
         </ul>
         <p className="font-serif mt-4 text-[16px] text-[var(--ink-2)]">
           Next steps
         </p>
-        <ul className="mt-2 space-y-1 text-[14px] leading-6 text-[var(--mute-2)]">
+        <ul className="note-list mt-2 space-y-1 text-[14px] leading-6 text-[var(--mute-2)]">
           <li>Deck to Brad, before Thursday.</li>
         </ul>
       </article>

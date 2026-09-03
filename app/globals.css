@@ -35,7 +35,6 @@ body {
 body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   min-height: 100%;
-  letter-spacing: 0.01em;
 }
 
 .font-serif {
@@ -93,4 +92,24 @@ body {
   background: #161616;
   color: #d8d8d4;
   letter-spacing: 0;
+}
+
+.note-list {
+  list-style: none;
+}
+
+.note-list li {
+  position: relative;
+  padding-left: 0.95em;
+}
+
+.note-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--olive);
 }

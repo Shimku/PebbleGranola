@@ -1,10 +1,4 @@
-"use client";
-
-import { useId } from "react";
-
 export function RingMark({ size = 28 }: { size?: number }) {
-  const steel = `ring-steel-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
-
   return (
     <svg
       width={size}
@@ -13,37 +7,22 @@ export function RingMark({ size = 28 }: { size?: number }) {
       fill="none"
       aria-hidden
     >
-      <defs>
-        <linearGradient id={steel} x1="7" y1="3" x2="25" y2="27">
-          <stop offset="0%" stopColor="#f3f4f6" />
-          <stop offset="32%" stopColor="#c8ccd1" />
-          <stop offset="58%" stopColor="#8a8e94" />
-          <stop offset="100%" stopColor="#dde0e4" />
-        </linearGradient>
-      </defs>
+      <circle cx="16" cy="14.8" r="10.15" stroke="#5f6368" strokeWidth="6.1" />
       <circle
         cx="16"
-        cy="14.7"
-        r="10.35"
-        stroke={`url(#${steel})`}
-        strokeWidth="5.6"
+        cy="14.8"
+        r="10.15"
+        stroke="#d8dce1"
+        strokeWidth="1.35"
       />
-      <circle
-        cx="16"
-        cy="14.7"
-        r="7.55"
-        stroke="#ffffff"
-        strokeOpacity="0.55"
-        strokeWidth="0.7"
-      />
-      <circle cx="16" cy="14.7" r="6.05" fill="#f7f7f2" />
-      <circle cx="16" cy="14.7" r="3.05" fill="#5b6f00" />
+      <circle cx="16" cy="14.8" r="5.65" fill="#f7f7f2" />
+      <circle cx="16" cy="14.8" r="3.2" fill="#5b6f00" />
       <rect
-        x="13.2"
-        y="23.55"
-        width="5.6"
-        height="4.15"
-        rx="1.9"
+        x="13.15"
+        y="23.15"
+        width="5.7"
+        height="4.45"
+        rx="2"
         fill="#fa4a36"
       />
     </svg>
