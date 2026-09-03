@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #14110c;
+  --bg-2: #1c1812;
+  --ink: #f3eadc;
+  --muted: #b7aa96;
+  --line: rgba(243, 234, 220, 0.12);
+  --gold: #d7b072;
+  --gold-2: #f0d7a1;
+  --paper: #f4eee4;
+  --paper-ink: #231c14;
+  --danger: #e6a08a;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+body {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  min-height: 100%;
+}
+
+.font-serif {
+  font-family: var(--font-serif), ui-serif, Georgia, serif;
+}
+
+.font-mono {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, monospace;
+}
+
+::selection {
+  background: var(--gold);
+  color: var(--bg);
+}
