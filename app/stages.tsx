@@ -1,43 +1,29 @@
-import { RingMark, TimerRing } from "./mark";
+"use client";
+
+import {
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
+import { IndexRing } from "./index-ring";
+import { usePointerTilt, useReducedMotion } from "./motion";
 
 export type Mode = "afterthought" | "prep" | "todos";
+
+export type ToolResult = {
+  text: string;
+  title: string | null;
+  meetings: { id: string; title: string; date: string | null }[];
+};
 
 export const MODES: {
   id: Mode;
   title: string;
   short: string;
-  line: string;
-  placeholder: string;
-  sample: string;
+  field: "thought" | "for";
+  optional?: boolean;
 }[] = [
-  {
-    id: "afterthought",
-    title: "Afterthought",
-    short: "After",
-    line: "A thought for a meeting you already captured. Combined note stays here. Granola is not edited.",
-    placeholder:
-      "Add this to the last meeting: send Brad the deck before Thursday.",
-    sample:
-      "Add this to the last meeting: we should send Brad the deck before Thursday, and don't mention pricing yet.",
-  },
-  {
-    id: "prep",
-    title: "Prep me",
-    short: "Prep",
-    line: "Thirty seconds before you walk in. Latest Granola match, unless you ask wider. Pitches are titled Sorta<>Name Xxx.",
-    placeholder:
-      "Prep me for my next pitch of the visual canvas. What should I say, and what should I not say?",
-    sample:
-      "Prep me for my next pitch of the visual canvas. What should I repeat, and what should I not say?",
-  },
-  {
-    id: "todos",
-    title: "What I owe",
-    short: "Owe",
-    line: "Open loops from this week, or one client. Yours vs theirs. Dates stay if Granola had them.",
-    placeholder: "What do I need to do from this week's client meetings?",
-    sample: "What do I need to do from this week's client meetings?",
-  },
+  { id: "afterthought", title: "Afterthought", short: "After", field: "thought" },
+  { id: "prep", title: "Prep me", short: "Prep", field: "for" },
+  { id: "todos", title: "What I owe", short: "Owe", field: "for", optional: true },
 ];
 
 export function kindLabel(kind: Mode) {
@@ -49,194 +35,249 @@ export function kindLabel(kind: Mode) {
 export function ToolStage({
   mode,
   utterance,
+  onUtterance,
   result,
   busy,
+  canRun,
+  onRun,
 }: {
   mode: Mode;
   utterance: string;
-  result: string | null;
+  onUtterance: (value: string) => void;
+  result: ToolResult | null;
   busy: boolean;
+  canRun: boolean;
+  onRun: () => void;
 }) {
-  if (mode === "afterthought") {
-    return (
-      <AfterthoughtStage
-        utterance={utterance}
-        result={result}
-        busy={busy}
-      />
-    );
-  }
-  if (mode === "prep") {
-    return <PrepStage result={result} busy={busy} />;
-  }
-  return <OweStage result={result} busy={busy} />;
-}
+  const reduced = useReducedMotion();
+  const { wellRef, worldRef, ringRef, onPointerMove, onPointerLeave } =
+    usePointerTilt(!reduced);
+  const active = MODES.find((item) => item.id === mode) ?? MODES[0];
+  const lines = resultLines(result?.text ?? null);
+  const ledger = splitLedger(lines);
+  const meeting = result?.title ?? result?.meetings[0]?.title ?? null;
 
-function AfterthoughtStage({
-  utterance,
-  result,
-  busy,
-}: {
-  utterance: string;
-  result: string | null;
-  busy: boolean;
-}) {
-  const thought =
-    utterance.trim() || "Speak the leftover thought. It lands on the note.";
-  const push = resultLines(result);
+  function onKeyDown(
+    event: ReactKeyboardEvent<HTMLTextAreaElement | HTMLInputElement>,
+  ) {
+    if (!canRun) return;
+    if (mode === "afterthought") {
+      if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        onRun();
+      }
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      onRun();
+    }
+  }
 
   return (
-    <div className="stage">
-      <article className="note-sheet">
-        <header className="note-sheet-head">
-          <p className="kicker">
-            <span className="live-dot" aria-hidden />
-            Granola note
-          </p>
-          <h3 className="font-serif note-title">Last matching meeting</h3>
-          <p className="note-meta">Looked up live · not written back</p>
-        </header>
+    <div
+      ref={wellRef}
+      className={`well well-${mode} ${busy ? "is-busy" : ""} ${result ? "has-result" : ""}`}
+      onPointerMove={onPointerMove}
+      onPointerLeave={onPointerLeave}
+    >
+      <div ref={worldRef} className="world">
+        {mode === "afterthought" ? (
+          <Sheet
+            thought={utterance}
+            onThought={onUtterance}
+            onKeyDown={onKeyDown}
+            meeting={meeting}
+            busy={busy}
+          />
+        ) : null}
+        {mode === "todos" ? (
+          <Trays you={ledger.you} them={ledger.them} busy={busy} />
+        ) : null}
+        {mode !== "todos" ? (
+          <PushCard
+            lines={lines}
+            busy={busy}
+            flash={Boolean(result) && !busy}
+            pose={mode === "prep" ? "hero" : "dock"}
+          />
+        ) : null}
+      </div>
 
-        <div className="note-sheet-body">
-          <p className="thought-band">{thought}</p>
-        </div>
-
+      {mode !== "todos" ? (
         <div
-          className={`push-dock ${result ? "epaper-flash" : ""} ${busy ? "is-waiting" : ""}`}
+          ref={ringRef}
+          className={`ring-slot ${mode === "prep" ? "is-hero" : "is-dock"}`}
         >
-          <div className="push-meta">
-            <span className="push-app">
-              <RingMark size={14} />
-              PEBBLE
-            </span>
-            <span>now</span>
-          </div>
-          <p className="push-title">
-            {busy
-              ? "Looking up Granola…"
-              : (push[0] ?? "Idea added to [meeting]")}
-          </p>
-          {push.length > 1 ? (
-            <p className="push-body">{push.slice(1).join(" ")}</p>
-          ) : null}
+          <IndexRing
+            face={mode === "prep" ? "epaper" : "cream"}
+            pose={mode === "prep" ? "hero" : "dock"}
+            busy={busy}
+            reducedMotion={reduced}
+          />
         </div>
-      </article>
+      ) : null}
+
+      <div className="deck">
+        {active.field === "for" ? (
+          <label className="deck-label" htmlFor="utterance">
+            For{active.optional ? " · optional" : ""}
+          </label>
+        ) : null}
+        {active.field === "for" ? (
+          <input
+            id="utterance"
+            value={utterance}
+            onChange={(event) => onUtterance(event.target.value)}
+            onKeyDown={onKeyDown}
+            autoComplete="off"
+            spellCheck={false}
+          />
+        ) : (
+          <span className="deck-spacer" />
+        )}
+        <button
+          type="button"
+          className="index-run"
+          disabled={!canRun}
+          onClick={onRun}
+          aria-label={busy ? "Running" : "Run"}
+        >
+          <span className="index-cap" aria-hidden />
+          <span>{busy ? "Hold" : "Run"}</span>
+        </button>
+      </div>
     </div>
   );
 }
 
-function PrepStage({
-  result,
+function Sheet({
+  thought,
+  onThought,
+  onKeyDown,
+  meeting,
   busy,
 }: {
-  result: string | null;
+  thought: string;
+  onThought: (value: string) => void;
+  onKeyDown: (event: ReactKeyboardEvent<HTMLTextAreaElement>) => void;
+  meeting: string | null;
   busy: boolean;
 }) {
-  const lines = resultLines(result);
-
   return (
-    <div className="stage stage-prep">
-      <div className="doorway">
-        <TimerRing />
-        <div className="doorway-copy">
-          <p className="kicker kicker-light">Doorway</p>
-          <h3>Thirty seconds</h3>
-          <p>
-            Latest Granola match. Pitches titled{" "}
-            <span className="mono-inline">Sorta{"<>"}Name Xxx</span>.
-          </p>
+    <article className={`sheet ${busy ? "is-busy" : ""}`}>
+      {Array.from({ length: 7 }, (_, index) => (
+        <span
+          key={index}
+          className="sheet-ply"
+          style={{ transform: `translateZ(${-0.7 * (index + 1)}px)` }}
+        />
+      ))}
+      <span className="sheet-spine" aria-hidden />
+      <div className="sheet-face">
+        {meeting ? (
+          <h3 className="font-serif sheet-title">{meeting}</h3>
+        ) : (
+          <span className="sheet-rule" aria-hidden />
+        )}
+        <div className="sheet-editor">
+          <div className="sheet-mark" aria-hidden>
+            {thought}
+          </div>
+          <textarea
+            id="utterance"
+            aria-label="Thought"
+            value={thought}
+            onChange={(event) => onThought(event.target.value)}
+            onKeyDown={onKeyDown}
+            spellCheck={false}
+          />
         </div>
       </div>
-      <div
-        className={`epaper-screen prep-screen ${result ? "epaper-flash" : ""} ${busy ? "is-waiting" : ""}`}
-      >
-        <p className="epaper-kicker">INDEX · PREP</p>
-        {busy ? (
-          <p className="epaper-title">Looking up Granola…</p>
-        ) : lines.length ? (
-          <>
-            <p className="epaper-title">{lines[0]}</p>
-            {lines.length > 1 ? (
-              <p className="epaper-body">{lines.slice(1).join("\n")}</p>
-            ) : null}
-          </>
+    </article>
+  );
+}
+
+function Trays({
+  you,
+  them,
+  busy,
+}: {
+  you: string[];
+  them: string[];
+  busy: boolean;
+}) {
+  return (
+    <div className={`trays ${busy ? "is-busy" : ""}`}>
+      <Tray label="You" tone="you" items={you} />
+      <Tray label="Them" tone="them" items={them} />
+    </div>
+  );
+}
+
+function Tray({
+  label,
+  tone,
+  items,
+}: {
+  label: string;
+  tone: "you" | "them";
+  items: string[];
+}) {
+  return (
+    <section className={`tray tray-${tone}`}>
+      <h3>{label}</h3>
+      <div className="tray-well">
+        {items.length === 0 ? (
+          <div className="tray-empty" />
         ) : (
-          <p className="epaper-body">
-            A lock-screen brief you can read while walking in. One meeting,
-            unless you say this week.
-          </p>
+          items.map((item, index) => (
+            <article
+              key={`${item}-${index}`}
+              className="owe-card"
+              style={{ animationDelay: `${index * 70}ms` }}
+            >
+              <span className="owe-card-edge" aria-hidden />
+              <p>{item}</p>
+            </article>
+          ))
         )}
       </div>
-    </div>
+    </section>
   );
 }
 
-function OweStage({
-  result,
+function PushCard({
+  lines,
   busy,
+  flash,
+  pose,
 }: {
-  result: string | null;
+  lines: string[];
   busy: boolean;
+  flash: boolean;
+  pose: "hero" | "dock";
 }) {
-  const lines = resultLines(result);
-
-  const live = busy || lines.length > 0;
-
+  if (!busy && lines.length === 0) return null;
   return (
-    <div className="stage stage-owe">
-      {live ? (
-        <div
-          className={`epaper-screen owe-screen ${result ? "epaper-flash" : ""} ${busy ? "is-waiting" : ""}`}
-        >
-          <p className="epaper-kicker">INDEX · OPEN LOOPS</p>
-          {busy ? (
-            <p className="epaper-title">Looking up Granola…</p>
-          ) : (
-            <ul className="owe-live">
-              {lines.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          )}
-        </div>
-      ) : (
-        <div className="ledger">
-          <section>
-            <h3>
-              <span className="lane-dot lane-you" />
-              You
-            </h3>
-            <ul className="ledger-rows">
-              <li>
-                <span className="tick" />
-                <span>A deliverable with a date</span>
-                <span className="date-chip">Thu</span>
-              </li>
-              <li>
-                <span className="tick" />
-                <span>Something you promised</span>
-              </li>
-            </ul>
-          </section>
-          <section>
-            <h3>
-              <span className="lane-dot lane-them" />
-              Them
-            </h3>
-            <ul className="ledger-rows">
-              <li>
-                <span className="tick" />
-                <span>What they still owe you</span>
-              </li>
-              <li>
-                <span className="tick" />
-                <span>An open question</span>
-              </li>
-            </ul>
-          </section>
-        </div>
-      )}
-    </div>
+    <aside
+      className={`push-card is-${pose} ${flash ? "is-flash" : ""} ${busy ? "is-busy" : ""}`}
+    >
+      <span className="push-card-edge" aria-hidden />
+      <div className="push-card-face">
+        <p className="push-card-app">INDEX</p>
+        {busy ? (
+          <span className="push-shimmer" aria-hidden />
+        ) : (
+          <>
+            <p className="font-serif push-card-title">{lines[0]}</p>
+            {lines.length > 1 ? (
+              <p className="push-card-body">{lines.slice(1).join(" ")}</p>
+            ) : null}
+          </>
+        )}
+      </div>
+    </aside>
   );
 }
 
@@ -246,4 +287,55 @@ function resultLines(result: string | null) {
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
+}
+
+const YOU_HEADER = /^(you|yours|me|my items?|i owe|owed by me)\b[:\s-]*/i;
+const THEM_HEADER = /^(them|theirs|they|their items?|waiting on|owed to me)\b[:\s-]*/i;
+
+export function splitLedger(lines: string[]) {
+  const you: string[] = [];
+  const them: string[] = [];
+  let lane: "you" | "them" | null = null;
+
+  for (const raw of lines) {
+    const line = raw.replace(/^[-•*]\s*/, "");
+    if (YOU_HEADER.test(line) && line.replace(YOU_HEADER, "").trim().length < 2) {
+      lane = "you";
+      const rest = line.replace(YOU_HEADER, "").trim();
+      if (rest) you.push(rest);
+      continue;
+    }
+    if (THEM_HEADER.test(line) && line.replace(THEM_HEADER, "").trim().length < 2) {
+      lane = "them";
+      const rest = line.replace(THEM_HEADER, "").trim();
+      if (rest) them.push(rest);
+      continue;
+    }
+    if (YOU_HEADER.test(line)) {
+      lane = "you";
+      const rest = line.replace(YOU_HEADER, "").trim();
+      if (rest) you.push(rest);
+      continue;
+    }
+    if (THEM_HEADER.test(line)) {
+      lane = "them";
+      const rest = line.replace(THEM_HEADER, "").trim();
+      if (rest) them.push(rest);
+      continue;
+    }
+
+    const theirs = /\b(they|them|their|waiting on)\b/i.test(line);
+    const mine = /\b(i |i'm|i owe|send|my |need to)\b/i.test(line);
+    if (theirs && !mine) {
+      them.push(line);
+      lane = "them";
+    } else if (lane === "them") {
+      them.push(line);
+    } else {
+      you.push(line);
+      lane = "you";
+    }
+  }
+
+  return { you, them };
 }

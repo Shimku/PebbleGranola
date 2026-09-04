@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { RingMark } from "./mark";
-import { MODES, ToolStage, kindLabel, type Mode } from "./stages";
+import {
+  MODES,
+  ToolStage,
+  kindLabel,
+  type Mode,
+  type ToolResult,
+} from "./stages";
 
 export type Capture = {
   id: string;
@@ -30,13 +36,11 @@ export type StatusPayload = {
 export function Dashboard({ initial }: { initial: StatusPayload }) {
   const [status, setStatus] = useState(initial);
   const [mode, setMode] = useState<Mode>("afterthought");
-  const [utterance, setUtterance] = useState(MODES[0].sample);
+  const [utterance, setUtterance] = useState("");
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
+  const [result, setResult] = useState<ToolResult | null>(null);
   const [error, setError] = useState<string | null>(initial.error ?? null);
   const [copied, setCopied] = useState<string | null>(null);
-
-  const active = MODES.find((item) => item.id === mode) ?? MODES[0];
 
   useEffect(() => {
     void refreshStatus();
@@ -90,9 +94,13 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
           args,
         }),
       });
-      const json = (await response.json()) as { text?: string; error?: string };
+      const json = (await response.json()) as ToolResult & { error?: string };
       if (!response.ok) throw new Error(json.error || "Request failed");
-      setResult(json.text ?? "");
+      setResult({
+        text: json.text,
+        title: json.title ?? null,
+        meetings: json.meetings ?? [],
+      });
       await refreshStatus();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Try failed");
@@ -105,6 +113,11 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
     await fetch("/api/granola/disconnect", { method: "POST" });
     await refreshStatus();
   }
+
+  const canRun =
+    status.connected &&
+    !busy &&
+    (mode === "todos" || utterance.trim().length > 0);
 
   return (
     <div className="app-shell">
@@ -184,7 +197,7 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
                   aria-controls="tool-panel"
                   onClick={() => {
                     setMode(item.id);
-                    setUtterance(item.sample);
+                    setUtterance("");
                     setResult(null);
                   }}
                 >
@@ -200,45 +213,16 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
             role="tabpanel"
             id="tool-panel"
             aria-labelledby={`tab-${mode}`}
-            aria-describedby="tool-desc"
           >
-            <p id="tool-desc" className="sr-only">
-              {active.line}
-            </p>
             <ToolStage
               mode={mode}
               utterance={utterance}
+              onUtterance={setUtterance}
               result={result}
               busy={busy}
+              canRun={canRun}
+              onRun={() => void tryTool()}
             />
-
-            <label className="sr-only" htmlFor="utterance">
-              What you would say to Index
-            </label>
-            <div className="speak">
-              <textarea
-                id="utterance"
-                value={utterance}
-                onChange={(event) => setUtterance(event.target.value)}
-                placeholder={active.placeholder}
-              />
-              <button
-                type="button"
-                className="index-run"
-                disabled={busy || !status.connected}
-                onClick={() => void tryTool()}
-              >
-                <span className="index-cap" aria-hidden />
-                <span>{busy ? "Hold…" : "Run"}</span>
-              </button>
-            </div>
-            {!status.connected ? (
-              <p className="speak-hint">Connect Granola first.</p>
-            ) : (
-              <p className="speak-hint">
-                Same tools the ring calls. Then do it live: double-click-hold.
-              </p>
-            )}
           </div>
         </section>
 
@@ -266,6 +250,10 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
             </li>
             <li>Double click and hold → this sandbox.</li>
             <li>Single-click stays normal notes.</li>
+            <li>
+              Visual canvas pitches are Granola notes titled{" "}
+              <span className="pair-emph">Sorta{"<>"}Name Xxx</span>.
+            </li>
           </ol>
           <CopyField
             label="MCP URL"
@@ -286,21 +274,10 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
 
       <section className="notes" aria-labelledby="notes-title">
         <div className="notes-head">
-          <div>
-            <p className="kicker">Combined notes</p>
-            <h2 id="notes-title" className="font-serif">
-              Afterthoughts and briefs
-            </h2>
-          </div>
-          <p>
-            Granola summary plus what you said. The ring only gets the clipped
-            push.
-          </p>
+          <h2 id="notes-title">Log</h2>
         </div>
         {(status.captures ?? []).length === 0 ? (
-          <p className="notes-empty">
-            Nothing yet. Run a tool above, or double-click the ring.
-          </p>
+          <p className="notes-empty">Nothing yet.</p>
         ) : (
           <div className="notes-list">
             {(status.captures ?? []).map((capture) => (
@@ -322,18 +299,12 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
                   ) : null}
                 </div>
                 <p className="note-row-out">{capture.output}</p>
-                <p className="note-row-in">You said: {capture.input}</p>
+                <p className="note-row-in">{capture.input}</p>
               </article>
             ))}
           </div>
         )}
       </section>
-
-      <footer className="app-footer">
-        Free Granola: last 30 days, summaries, no transcripts. Visual canvas
-        pitches match notes titled Sorta{"<>"}Name Xxx. Say “this week” for a
-        wider recap.
-      </footer>
     </div>
   );
 }
