@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CopyBit } from "./copy";
 import { RingMark } from "./mark";
 import {
   MODES,
@@ -296,21 +297,24 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
           <div className="notes-list">
             {(status.captures ?? []).map((capture) => (
               <article key={capture.id} className="note-row">
-                <div className="note-row-meta">
-                  <span
-                    className={`kind-dot kind-${capture.kind}`}
-                    aria-hidden
-                  />
-                  <span>{kindLabel(capture.kind)}</span>
-                  <time
-                    dateTime={capture.created_at}
-                    suppressHydrationWarning
-                  >
-                    {new Date(capture.created_at).toLocaleString()}
-                  </time>
-                  {capture.title ? (
-                    <span className="note-row-title">{capture.title}</span>
-                  ) : null}
+                <div className="note-row-top">
+                  <div className="note-row-meta">
+                    <span
+                      className={`kind-dot kind-${capture.kind}`}
+                      aria-hidden
+                    />
+                    <span>{kindLabel(capture.kind)}</span>
+                    <time
+                      dateTime={capture.created_at}
+                      suppressHydrationWarning
+                    >
+                      {new Date(capture.created_at).toLocaleString()}
+                    </time>
+                    {capture.title ? (
+                      <span className="note-row-title">{capture.title}</span>
+                    ) : null}
+                  </div>
+                  <CopyBit text={capture.output} ghost />
                 </div>
                 <p className="note-row-out">{capture.output}</p>
                 <p className="note-row-in">{capture.input}</p>
