@@ -35,14 +35,14 @@ void main() {
   vec3 L1 = normalize(uLightA);
   vec3 L2 = normalize(uLightB);
   vec3 H1 = normalize(L1 + V);
-  float ndl = max(dot(N, L1), 0.0) + 0.28 * max(dot(N, L2), 0.0);
+  float ndl = max(dot(N, L1), 0.0) + 0.35 * max(dot(N, L2), 0.0);
   float spec = pow(max(dot(N, H1), 0.0), uGloss);
-  vec3 env = mix(vec3(0.38, 0.39, 0.42), vec3(0.93, 0.93, 0.91), clamp(N.y * 0.5 + 0.5, 0.0, 1.0));
-  vec3 base = mix(uAlbedo, env, uMetal * 0.28);
-  vec3 col = base * (0.14 + 0.86 * ndl);
-  col += vec3(0.96, 0.97, 0.98) * spec * mix(0.18, 0.95, uMetal);
-  float rim = pow(1.0 - max(dot(N, V), 0.0), 2.6);
-  col += vec3(0.86, 0.88, 0.9) * rim * (0.1 + 0.22 * uMetal);
+  vec3 env = mix(vec3(0.46, 0.47, 0.5), vec3(0.96, 0.96, 0.94), clamp(N.y * 0.5 + 0.5, 0.0, 1.0));
+  vec3 base = mix(uAlbedo, env, uMetal * 0.32);
+  vec3 col = base * (0.34 + 0.78 * ndl);
+  col += vec3(0.98, 0.98, 0.99) * spec * mix(0.22, 1.05, uMetal);
+  float rim = pow(1.0 - max(dot(N, V), 0.0), 2.2);
+  col += vec3(0.9, 0.91, 0.93) * rim * (0.16 + 0.28 * uMetal);
   gl_FragColor = vec4(col, 1.0);
 }
 `;
@@ -69,13 +69,15 @@ export function IndexRing({
   const faceRef = useRef(face);
   const busyRef = useRef(busy);
   const reducedRef = useRef(reducedMotion);
+  const poseRef = useRef(pose);
   const [fallback, setFallback] = useState(false);
 
   useEffect(() => {
     faceRef.current = face;
     busyRef.current = busy;
     reducedRef.current = reducedMotion;
-  }, [face, busy, reducedMotion]);
+    poseRef.current = pose;
+  }, [face, busy, reducedMotion, pose]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -84,6 +86,7 @@ export function IndexRing({
       getFace: () => faceRef.current,
       getBusy: () => busyRef.current,
       getReduced: () => reducedRef.current,
+      getPose: () => poseRef.current,
       onFail: () => setFallback(true),
     });
     return stop;
@@ -112,6 +115,7 @@ function startRing(
     getFace: () => Face;
     getBusy: () => boolean;
     getReduced: () => boolean;
+    getPose: () => Pose;
     onFail: () => void;
   },
 ) {
@@ -194,19 +198,21 @@ function startRing(
     const reduced = opts.getReduced();
     const busy = opts.getBusy();
     const face = opts.getFace();
+    const pose = opts.getPose();
 
     if (!reduced) {
-      const speed = busy ? 1.15 : 0.28;
+      const speed = busy ? 1.15 : pose === "hero" ? 0.32 : 0.22;
       rotY += dt * speed;
     }
 
-    const tiltX = reduced ? 0.62 : 0.58 + Math.sin(elapsed * 0.35) * 0.04;
+    const baseTilt = pose === "hero" ? 0.62 : 1.08;
+    const tiltX = reduced ? baseTilt : baseTilt + Math.sin(elapsed * 0.35) * 0.03;
     const spin = reduced ? 0.7 : rotY;
     const rx = rotateX(tiltX);
     const ry = rotateY(spin);
     const model = multiply(rx, ry);
-    const view = translate(0, 0.08, -4.15);
-    const proj = perspective(0.48, 1, 0.2, 12);
+    const view = translate(0, pose === "hero" ? 0.06 : 0.18, pose === "hero" ? -3.55 : -3.7);
+    const proj = perspective(0.5, 1, 0.2, 12);
     const mvp = multiply(proj, multiply(view, model));
     const nrm = normal3(model);
 

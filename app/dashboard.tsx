@@ -215,6 +215,7 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
             aria-labelledby={`tab-${mode}`}
           >
             <ToolStage
+              key={mode}
               mode={mode}
               utterance={utterance}
               onUtterance={setUtterance}

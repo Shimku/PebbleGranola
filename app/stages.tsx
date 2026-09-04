@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useRef,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { IndexRing } from "./index-ring";
@@ -164,27 +165,32 @@ function Sheet({
   meeting: string | null;
   busy: boolean;
 }) {
+  const areaRef = useRef<HTMLTextAreaElement>(null);
+
   return (
-    <article className={`sheet ${busy ? "is-busy" : ""}`}>
+    <article className={`sheet ${busy ? "is-busy" : ""} ${thought.trim() ? "has-ink" : ""}`}>
       {Array.from({ length: 7 }, (_, index) => (
         <span
           key={index}
           className="sheet-ply"
-          style={{ transform: `translateZ(${-0.7 * (index + 1)}px)` }}
+          style={{
+            transform: `translate3d(${0.35 * (index + 1)}px, ${0.45 * (index + 1)}px, ${-0.85 * (index + 1)}px)`,
+          }}
         />
       ))}
       <span className="sheet-spine" aria-hidden />
-      <div className="sheet-face">
+      <div
+        className="sheet-face"
+        onClick={() => areaRef.current?.focus()}
+      >
         {meeting ? (
           <h3 className="font-serif sheet-title">{meeting}</h3>
         ) : (
           <span className="sheet-rule" aria-hidden />
         )}
         <div className="sheet-editor">
-          <div className="sheet-mark" aria-hidden>
-            {thought}
-          </div>
           <textarea
+            ref={areaRef}
             id="utterance"
             aria-label="Thought"
             value={thought}
