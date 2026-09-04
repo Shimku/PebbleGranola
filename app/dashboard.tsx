@@ -114,10 +114,9 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
     await refreshStatus();
   }
 
-  const canRun =
-    status.connected &&
-    !busy &&
-    (mode === "todos" || utterance.trim().length > 0);
+  const ready =
+    status.connected && (mode === "todos" || utterance.trim().length > 0);
+  const canRun = ready && !busy;
 
   return (
     <div className="app-shell">
@@ -209,7 +208,7 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
           </div>
 
           <div
-            className="workspace-card"
+            className={`stage stage-${mode}`}
             role="tabpanel"
             id="tool-panel"
             aria-labelledby={`tab-${mode}`}

@@ -54,7 +54,7 @@ export default function RootLayout({
       lang="en"
       className={`${serif.variable} ${sans.variable} ${mono.variable} h-full antialiased`}
     >
-      <body className="min-h-dvh bg-[var(--paper)] text-[var(--ink)]">
+      <body className="min-h-dvh bg-[var(--paper)] text-[var(--ink)] antialiased">
         {children}
       </body>
     </html>

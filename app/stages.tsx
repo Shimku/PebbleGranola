@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  useRef,
-  type KeyboardEvent as ReactKeyboardEvent,
-} from "react";
-import { IndexRing } from "./index-ring";
-import { usePointerTilt, useReducedMotion } from "./motion";
+import { useRef, type KeyboardEvent } from "react";
 
 export type Mode = "afterthought" | "prep" | "todos";
 
@@ -19,12 +14,10 @@ export const MODES: {
   id: Mode;
   title: string;
   short: string;
-  field: "thought" | "for";
-  optional?: boolean;
 }[] = [
-  { id: "afterthought", title: "Afterthought", short: "After", field: "thought" },
-  { id: "prep", title: "Prep me", short: "Prep", field: "for" },
-  { id: "todos", title: "What I owe", short: "Owe", field: "for", optional: true },
+  { id: "afterthought", title: "Afterthought", short: "After" },
+  { id: "prep", title: "Prep me", short: "Prep" },
+  { id: "todos", title: "What I owe", short: "Owe" },
 ];
 
 export function kindLabel(kind: Mode) {
@@ -50,16 +43,12 @@ export function ToolStage({
   canRun: boolean;
   onRun: () => void;
 }) {
-  const reduced = useReducedMotion();
-  const { wellRef, worldRef, ringRef, onPointerMove, onPointerLeave } =
-    usePointerTilt(!reduced);
-  const active = MODES.find((item) => item.id === mode) ?? MODES[0];
   const lines = resultLines(result?.text ?? null);
   const ledger = splitLedger(lines);
   const meeting = result?.title ?? result?.meetings[0]?.title ?? null;
 
   function onKeyDown(
-    event: ReactKeyboardEvent<HTMLTextAreaElement | HTMLInputElement>,
+    event: KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>,
   ) {
     if (!canRun) return;
     if (mode === "afterthought") {
@@ -75,123 +64,84 @@ export function ToolStage({
     }
   }
 
+  if (mode === "afterthought") {
+    return (
+      <AfterthoughtView
+        thought={utterance}
+        onThought={onUtterance}
+        onKeyDown={onKeyDown}
+        meeting={meeting}
+        lines={lines}
+        busy={busy}
+        canRun={canRun}
+        onRun={onRun}
+      />
+    );
+  }
+
+  if (mode === "prep") {
+    return (
+      <PrepView
+        who={utterance}
+        onWho={onUtterance}
+        onKeyDown={onKeyDown}
+        lines={lines}
+        busy={busy}
+        canRun={canRun}
+        onRun={onRun}
+      />
+    );
+  }
+
   return (
-    <div
-      ref={wellRef}
-      className={`well well-${mode} ${busy ? "is-busy" : ""} ${result ? "has-result" : ""}`}
-      onPointerMove={onPointerMove}
-      onPointerLeave={onPointerLeave}
-    >
-      <div ref={worldRef} className="world">
-        {mode === "afterthought" ? (
-          <Sheet
-            thought={utterance}
-            onThought={onUtterance}
-            onKeyDown={onKeyDown}
-            meeting={meeting}
-            busy={busy}
-          />
-        ) : null}
-        {mode === "todos" ? (
-          <Trays you={ledger.you} them={ledger.them} busy={busy} />
-        ) : null}
-        {mode !== "todos" ? (
-          <PushCard
-            lines={lines}
-            busy={busy}
-            flash={Boolean(result) && !busy}
-            pose={mode === "prep" ? "hero" : "dock"}
-          />
-        ) : null}
-      </div>
-
-      {mode !== "todos" ? (
-        <div
-          ref={ringRef}
-          className={`ring-slot ${mode === "prep" ? "is-hero" : "is-dock"}`}
-        >
-          <IndexRing
-            face={mode === "prep" ? "epaper" : "cream"}
-            pose={mode === "prep" ? "hero" : "dock"}
-            busy={busy}
-            reducedMotion={reduced}
-          />
-        </div>
-      ) : null}
-
-      <div className="deck">
-        {active.field === "for" ? (
-          <label className="deck-label" htmlFor="utterance">
-            For{active.optional ? " · optional" : ""}
-          </label>
-        ) : null}
-        {active.field === "for" ? (
-          <input
-            id="utterance"
-            value={utterance}
-            onChange={(event) => onUtterance(event.target.value)}
-            onKeyDown={onKeyDown}
-            autoComplete="off"
-            spellCheck={false}
-          />
-        ) : (
-          <span className="deck-spacer" />
-        )}
-        <button
-          type="button"
-          className="index-run"
-          disabled={!canRun}
-          onClick={onRun}
-          aria-label={busy ? "Running" : "Run"}
-        >
-          <span className="index-cap" aria-hidden />
-          <span>{busy ? "Hold" : "Run"}</span>
-        </button>
-      </div>
-    </div>
+    <OweView
+      who={utterance}
+      onWho={onUtterance}
+      onKeyDown={onKeyDown}
+      you={ledger.you}
+      them={ledger.them}
+      busy={busy}
+      canRun={canRun}
+      onRun={onRun}
+    />
   );
 }
 
-function Sheet({
+function AfterthoughtView({
   thought,
   onThought,
   onKeyDown,
   meeting,
+  lines,
   busy,
+  canRun,
+  onRun,
 }: {
   thought: string;
   onThought: (value: string) => void;
-  onKeyDown: (event: ReactKeyboardEvent<HTMLTextAreaElement>) => void;
+  onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   meeting: string | null;
+  lines: string[];
   busy: boolean;
+  canRun: boolean;
+  onRun: () => void;
 }) {
   const areaRef = useRef<HTMLTextAreaElement>(null);
 
   return (
-    <article className={`sheet ${busy ? "is-busy" : ""} ${thought.trim() ? "has-ink" : ""}`}>
-      {Array.from({ length: 7 }, (_, index) => (
-        <span
-          key={index}
-          className="sheet-ply"
-          style={{
-            transform: `translate3d(${0.35 * (index + 1)}px, ${0.45 * (index + 1)}px, ${-0.85 * (index + 1)}px)`,
-          }}
-        />
-      ))}
-      <span className="sheet-spine" aria-hidden />
-      <div
-        className="sheet-face"
-        onClick={() => areaRef.current?.focus()}
-      >
+    <div className={`tool tool-note ${busy ? "is-busy" : ""}`}>
+      <article className="note" onClick={() => areaRef.current?.focus()}>
+        <span className="note-spine" aria-hidden />
         {meeting ? (
-          <h3 className="font-serif sheet-title">{meeting}</h3>
-        ) : (
-          <span className="sheet-rule" aria-hidden />
-        )}
-        <div className="sheet-editor">
+          <p className="note-meeting font-serif-italic">{meeting}</p>
+        ) : null}
+        <div className="note-write">
+          <div className="note-hl" aria-hidden>
+            <Highlight text={thought} />
+          </div>
           <textarea
             ref={areaRef}
-            id="utterance"
+            id="field-afterthought"
             aria-label="Thought"
             value={thought}
             onChange={(event) => onThought(event.target.value)}
@@ -199,29 +149,135 @@ function Sheet({
             spellCheck={false}
           />
         </div>
-      </div>
-    </article>
-  );
-}
-
-function Trays({
-  you,
-  them,
-  busy,
-}: {
-  you: string[];
-  them: string[];
-  busy: boolean;
-}) {
-  return (
-    <div className={`trays ${busy ? "is-busy" : ""}`}>
-      <Tray label="You" tone="you" items={you} />
-      <Tray label="Them" tone="them" items={them} />
+        <footer className="note-foot">
+          {busy || lines.length > 0 ? (
+            <aside className="ink-chip">
+              <p className="ink-app">Index</p>
+              {busy ? (
+                <span className="ink-meter" aria-hidden />
+              ) : (
+                <p className="ink-copy">{lines.join(" ")}</p>
+              )}
+            </aside>
+          ) : (
+            <span />
+          )}
+          <IndexRun busy={busy} disabled={!canRun} onRun={onRun} />
+        </footer>
+      </article>
     </div>
   );
 }
 
-function Tray({
+function Highlight({ text }: { text: string }) {
+  if (!text) return null;
+  const endsWithBreak = text.endsWith("\n");
+  const body = text.replace(/ $/, "\u00a0");
+  return (
+    <>
+      <span>{body}</span>
+      {endsWithBreak ? <br /> : null}
+    </>
+  );
+}
+
+function PrepView({
+  who,
+  onWho,
+  onKeyDown,
+  lines,
+  busy,
+  canRun,
+  onRun,
+}: {
+  who: string;
+  onWho: (value: string) => void;
+  onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
+  lines: string[];
+  busy: boolean;
+  canRun: boolean;
+  onRun: () => void;
+}) {
+  const whoRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div className={`tool tool-brief ${busy ? "is-busy" : ""}`}>
+      <article className="lock" onClick={() => whoRef.current?.focus()}>
+        <header className="lock-head">
+          <p className="lock-app">Index</p>
+          {busy ? <span className="ink-meter lock-head-meter" aria-hidden /> : null}
+        </header>
+        <label className="lock-kicker" htmlFor="field-prep">
+          For
+        </label>
+        <input
+          ref={whoRef}
+          id="field-prep"
+          className="lock-who font-serif"
+          value={who}
+          onChange={(event) => onWho(event.target.value)}
+          onKeyDown={onKeyDown}
+          autoComplete="off"
+          spellCheck={false}
+        />
+        <div className="lock-rule" aria-hidden />
+        <div className="lock-body">
+          {lines.map((line) => (
+            <p key={line}>{line}</p>
+          ))}
+        </div>
+        <footer className="lock-foot">
+          <IndexRun busy={busy} disabled={!canRun} onRun={onRun} />
+        </footer>
+      </article>
+    </div>
+  );
+}
+
+function OweView({
+  who,
+  onWho,
+  onKeyDown,
+  you,
+  them,
+  busy,
+  canRun,
+  onRun,
+}: {
+  who: string;
+  onWho: (value: string) => void;
+  onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
+  you: string[];
+  them: string[];
+  busy: boolean;
+  canRun: boolean;
+  onRun: () => void;
+}) {
+  return (
+    <div className={`tool tool-owe ${busy ? "is-busy" : ""}`}>
+      <div className="tool-bar is-lead">
+        <label className="bar-label" htmlFor="field-owe">
+          For
+        </label>
+        <input
+          id="field-owe"
+          value={who}
+          onChange={(event) => onWho(event.target.value)}
+          onKeyDown={onKeyDown}
+          autoComplete="off"
+          spellCheck={false}
+        />
+        <IndexRun busy={busy} disabled={!canRun} onRun={onRun} />
+      </div>
+      <div className="ledger">
+        <Lane label="You" tone="you" items={you} />
+        <Lane label="Them" tone="them" items={them} />
+      </div>
+    </div>
+  );
+}
+
+function Lane({
   label,
   tone,
   items,
@@ -231,59 +287,49 @@ function Tray({
   items: string[];
 }) {
   return (
-    <section className={`tray tray-${tone}`}>
-      <h3>{label}</h3>
-      <div className="tray-well">
-        {items.length === 0 ? (
-          <div className="tray-empty" />
-        ) : (
-          items.map((item, index) => (
-            <article
+    <section className={`lane lane-${tone}`}>
+      <h3>
+        <span className="lane-dot" aria-hidden />
+        {label}
+      </h3>
+      {items.length === 0 ? (
+        <div className="lane-empty" />
+      ) : (
+        <ul>
+          {items.map((item, index) => (
+            <li
               key={`${item}-${index}`}
-              className="owe-card"
-              style={{ animationDelay: `${index * 70}ms` }}
+              style={{ animationDelay: `${index * 55}ms` }}
             >
-              <span className="owe-card-edge" aria-hidden />
-              <p>{item}</p>
-            </article>
-          ))
-        )}
-      </div>
+              {item}
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
 
-function PushCard({
-  lines,
+function IndexRun({
   busy,
-  flash,
-  pose,
+  disabled,
+  onRun,
 }: {
-  lines: string[];
   busy: boolean;
-  flash: boolean;
-  pose: "hero" | "dock";
+  disabled: boolean;
+  onRun: () => void;
 }) {
-  if (!busy && lines.length === 0) return null;
   return (
-    <aside
-      className={`push-card is-${pose} ${flash ? "is-flash" : ""} ${busy ? "is-busy" : ""}`}
+    <button
+      type="button"
+      className={`index-run ${busy ? "is-busy" : ""}`}
+      disabled={disabled}
+      onClick={onRun}
+      aria-label={busy ? "Running" : "Run"}
     >
-      <span className="push-card-edge" aria-hidden />
-      <div className="push-card-face">
-        <p className="push-card-app">INDEX</p>
-        {busy ? (
-          <span className="push-shimmer" aria-hidden />
-        ) : (
-          <>
-            <p className="font-serif push-card-title">{lines[0]}</p>
-            {lines.length > 1 ? (
-              <p className="push-card-body">{lines.slice(1).join(" ")}</p>
-            ) : null}
-          </>
-        )}
-      </div>
-    </aside>
+      <span className={`index-cap ${busy ? "is-live" : ""}`} aria-hidden />
+      <span>Run</span>
+    </button>
   );
 }
 
@@ -311,7 +357,10 @@ export function splitLedger(lines: string[]) {
       if (rest) you.push(rest);
       continue;
     }
-    if (THEM_HEADER.test(line) && line.replace(THEM_HEADER, "").trim().length < 2) {
+    if (
+      THEM_HEADER.test(line) &&
+      line.replace(THEM_HEADER, "").trim().length < 2
+    ) {
       lane = "them";
       const rest = line.replace(THEM_HEADER, "").trim();
       if (rest) them.push(rest);
