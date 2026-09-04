@@ -220,7 +220,6 @@ function PrepView({
           autoComplete="off"
           spellCheck={false}
         />
-        <div className="lock-rule" aria-hidden />
         <div className="lock-body">
           {lines.map((line) => (
             <p key={line}>{line}</p>
