@@ -51,7 +51,11 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
   async function refreshStatus() {
     const response = await fetch("/api/status", { cache: "no-store" });
     const json = (await response.json()) as StatusPayload;
-    setStatus(json);
+    setStatus((prev) => ({
+      ...prev,
+      ...json,
+      captures: json.captures ?? prev.captures,
+    }));
     if (json.error) setError(json.error);
   }
 
@@ -196,8 +200,11 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
             role="tabpanel"
             id="tool-panel"
             aria-labelledby={`tab-${mode}`}
+            aria-describedby="tool-desc"
           >
-            <p className="tool-line">{active.line}</p>
+            <p id="tool-desc" className="sr-only">
+              {active.line}
+            </p>
             <ToolStage
               mode={mode}
               utterance={utterance}
@@ -290,13 +297,13 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
             push.
           </p>
         </div>
-        {status.captures.length === 0 ? (
+        {(status.captures ?? []).length === 0 ? (
           <p className="notes-empty">
             Nothing yet. Run a tool above, or double-click the ring.
           </p>
         ) : (
           <div className="notes-list">
-            {status.captures.map((capture) => (
+            {(status.captures ?? []).map((capture) => (
               <article key={capture.id} className="note-row">
                 <div className="note-row-meta">
                   <span

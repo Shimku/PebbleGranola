@@ -98,13 +98,6 @@ function AfterthoughtStage({
         </header>
 
         <div className="note-sheet-body">
-          <p className="font-serif note-section">Notes</p>
-          <ul className="note-list note-list-quiet">
-            <li>Granola summary stays in place</li>
-            <li>Your line is woven in, then saved here</li>
-          </ul>
-
-          <p className="font-serif note-section">Afterthought</p>
           <p className="thought-band">{thought}</p>
         </div>
 
@@ -147,9 +140,9 @@ function PrepStage({
         <TimerRing />
         <div className="doorway-copy">
           <p className="kicker kicker-light">Doorway</p>
-          <h3>Thirty seconds. Latest match.</h3>
+          <h3>Thirty seconds</h3>
           <p>
-            Name a person, a company, or the visual canvas. Pitches titled{" "}
+            Latest Granola match. Pitches titled{" "}
             <span className="mono-inline">Sorta{"<>"}Name Xxx</span>.
           </p>
         </div>
