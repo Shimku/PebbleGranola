@@ -164,7 +164,7 @@ function AfterthoughtView({
               )}
             </aside>
           ) : null}
-          <CopyBit text={thought} ghost />
+          <CopyBit text={thought} />
           <IndexRun busy={busy} disabled={!canRun} onRun={onRun} />
         </footer>
       </article>
