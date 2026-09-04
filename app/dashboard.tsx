@@ -33,14 +33,33 @@ export type StatusPayload = {
   error?: string;
 };
 
+const EMPTY_DRAFTS: Record<Mode, string> = {
+  afterthought: "",
+  prep: "",
+  todos: "",
+};
+
+const EMPTY_RESULTS: Record<Mode, ToolResult | null> = {
+  afterthought: null,
+  prep: null,
+  todos: null,
+};
+
 export function Dashboard({ initial }: { initial: StatusPayload }) {
   const [status, setStatus] = useState(initial);
   const [mode, setMode] = useState<Mode>("afterthought");
-  const [utterance, setUtterance] = useState("");
+  const [drafts, setDrafts] = useState(EMPTY_DRAFTS);
+  const [results, setResults] = useState(EMPTY_RESULTS);
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<ToolResult | null>(null);
   const [error, setError] = useState<string | null>(initial.error ?? null);
   const [copied, setCopied] = useState<string | null>(null);
+
+  const utterance = drafts[mode];
+  const result = results[mode];
+
+  function setUtterance(value: string) {
+    setDrafts((prev) => ({ ...prev, [mode]: value }));
+  }
 
   useEffect(() => {
     void refreshStatus();
@@ -69,38 +88,43 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
   }
 
   async function tryTool() {
+    const tool = mode;
+    const spoken = drafts[tool];
     setBusy(true);
     setError(null);
-    setResult(null);
+    setResults((prev) => ({ ...prev, [tool]: null }));
     try {
       const wantsPitch =
-        /pitch/i.test(utterance) ||
-        /visual canvas/i.test(utterance) ||
-        /\bsorta\b/i.test(utterance);
+        /pitch/i.test(spoken) ||
+        /visual canvas/i.test(spoken) ||
+        /\bsorta\b/i.test(spoken);
       const args =
-        mode === "afterthought"
-          ? { thought: utterance }
+        tool === "afterthought"
+          ? { thought: spoken }
           : {
-              who_or_topic: utterance,
+              who_or_topic: spoken,
               scope:
-                mode === "prep" ? (wantsPitch ? "pitch" : "last") : "recent",
+                tool === "prep" ? (wantsPitch ? "pitch" : "last") : "recent",
             };
 
       const response = await fetch("/api/try", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tool: mode,
+          tool,
           args,
         }),
       });
       const json = (await response.json()) as ToolResult & { error?: string };
       if (!response.ok) throw new Error(json.error || "Request failed");
-      setResult({
-        text: json.text,
-        title: json.title ?? null,
-        meetings: json.meetings ?? [],
-      });
+      setResults((prev) => ({
+        ...prev,
+        [tool]: {
+          text: json.text,
+          title: json.title ?? null,
+          meetings: json.meetings ?? [],
+        },
+      }));
       await refreshStatus();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Try failed");
@@ -170,12 +194,6 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
         </p>
       ) : null}
 
-      {!status.connected ? (
-        <p className="banner banner-setup">
-          Connect Granola, then copy the MCP fields into the Pebble app.
-        </p>
-      ) : null}
-
       <div className="app-grid">
         <section className="workspace" aria-labelledby="tool-tabs">
           <div
@@ -194,11 +212,7 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
                   id={`tab-${item.id}`}
                   aria-selected={selected}
                   aria-controls="tool-panel"
-                  onClick={() => {
-                    setMode(item.id);
-                    setUtterance("");
-                    setResult(null);
-                  }}
+                  onClick={() => setMode(item.id)}
                 >
                   <span className="tab-full">{item.title}</span>
                   <span className="tab-short">{item.short}</span>

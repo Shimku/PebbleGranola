@@ -220,7 +220,7 @@ function PrepView({
           autoComplete="off"
           spellCheck={false}
         />
-        <div className="lock-body">
+        <div className={`lock-body ${lines.length ? "" : "is-empty"}`}>
           {lines.map((line) => (
             <p key={line}>{line}</p>
           ))}
@@ -254,17 +254,16 @@ function OweView({
 }) {
   return (
     <div className={`tool tool-owe ${busy ? "is-busy" : ""}`}>
-      <div className="tool-bar is-lead">
-        <label className="bar-label" htmlFor="field-owe">
-          For
-        </label>
+      <div className="owe-head">
         <input
           id="field-owe"
+          className="owe-filter"
           value={who}
           onChange={(event) => onWho(event.target.value)}
           onKeyDown={onKeyDown}
           autoComplete="off"
           spellCheck={false}
+          aria-label="Person or client, optional"
         />
         <IndexRun busy={busy} disabled={!canRun} onRun={onRun} />
       </div>
@@ -292,9 +291,9 @@ function Lane({
         {label}
       </h3>
       {items.length === 0 ? (
-        <div className="lane-empty" />
+        <div className="lane-sheet" aria-hidden />
       ) : (
-        <ul>
+        <ul className="lane-sheet">
           {items.map((item, index) => (
             <li
               key={`${item}-${index}`}
