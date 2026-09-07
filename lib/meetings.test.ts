@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { meetingsFromUnknown, meetingSummary, noteBrief } from "./meeting-parse.ts";
+import { meetingsFromUnknown, meetingSummary, noteBrief, summariesByMeetingId } from "./meeting-parse.ts";
 import { ringBullets } from "./bullets.ts";
 
 test("parses nested meeting objects", () => {
@@ -69,6 +69,30 @@ test("pulls the <summary> out of a Granola meetings_data blob", () => {
   assert.match(brief, /CBRE/);
   assert.doesNotMatch(brief, /four short bullets/i);
   assert.doesNotMatch(brief, /open loops, and names/i);
+});
+
+test("splits <summary> blocks by meeting id", () => {
+  const blob = `<meetings_data>
+<meeting id="204a1fc7-0aab-4702-a206-785b4d944827" title="Brad">
+  <summary>Spain trip debrief. Friday catch-up to clear open items.</summary>
+</meeting>
+<meeting id="dce073c2-b0f5-4dff-86b5-642bc837ffd6" title="Interfaces Feedback">
+  <summary>Key sizes on the row with voice buttons look asymmetrical.</summary>
+</meeting>
+</meetings_data>`;
+  const byId = summariesByMeetingId({ content: [{ type: "text", text: blob }] });
+  assert.match(
+    byId["204a1fc7-0aab-4702-a206-785b4d944827"] ?? "",
+    /Spain trip/,
+  );
+  assert.match(
+    byId["dce073c2-b0f5-4dff-86b5-642bc837ffd6"] ?? "",
+    /voice buttons/,
+  );
+  assert.doesNotMatch(
+    byId["dce073c2-b0f5-4dff-86b5-642bc837ffd6"] ?? "",
+    /Spain trip/,
+  );
 });
 
 test("parses markdown MCP text with UUIDs", () => {

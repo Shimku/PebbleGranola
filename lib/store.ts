@@ -237,11 +237,28 @@ function mapCapture(row: Record<string, unknown>): Capture {
   };
 }
 
+export async function patchCaptureSource(id: string, source: unknown): Promise<void> {
+  await ensureSchema();
+  await db()`
+    UPDATE captures
+    SET source = ${JSON.stringify(source)}::jsonb
+    WHERE id = ${id}
+  `;
+}
+
 export async function getStatusPayload(appUrl: string) {
   const connected = Boolean(await getGranolaOAuth());
   const account = await getGranolaAccount();
   const pebbleToken = await getPebbleToken();
-  const captures = (await listCaptures(80)).map(slimCapture);
+  let captures = await listCaptures(80);
+  if (connected) {
+    try {
+      const { fillMissingSummaries } = await import("./hydrate");
+      captures = await fillMissingSummaries(captures);
+    } catch {
+      // Archive still renders; missing notes stay empty until the next refresh.
+    }
+  }
   const claimUrl = neonClaimUrl();
 
   return {
@@ -250,7 +267,7 @@ export async function getStatusPayload(appUrl: string) {
     pebbleToken,
     mcpUrl: `${appUrl}/mcp`,
     appUrl,
-    captures,
+    captures: captures.map(slimCapture),
     claimUrl,
     hasDatabase: hasDatabaseUrl(),
   };

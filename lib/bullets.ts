@@ -1,4 +1,4 @@
-import { granolaAnswer, isPromptEcho } from "./text.ts";
+import { granolaAnswer, isUnusableAnswer } from "./text.ts";
 
 const MAX_BULLETS = 4;
 const MAX_LINE = 140;
@@ -50,7 +50,7 @@ export function bulletLines(text: string, max = MAX_BULLETS): string[] {
     .map((line) => cleanLine(line))
     .filter(Boolean)
     .filter((line) => !SECTION.test(line))
-    .filter((line) => !isPromptEcho(line))
+    .filter((line) => !isUnusableAnswer(line))
     .filter((line) => !REASONING.test(line))
     .filter((line) => line.length > 6);
 

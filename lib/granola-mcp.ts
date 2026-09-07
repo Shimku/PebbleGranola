@@ -140,7 +140,9 @@ async function ensureSession(token: string): Promise<Session> {
 }
 
 function timeoutForTool(name: string): number {
-  return name === "query_granola_meetings" ? QUERY_TIMEOUT_MS : DEFAULT_TIMEOUT_MS;
+  if (name === "query_granola_meetings") return QUERY_TIMEOUT_MS;
+  if (name === "get_meetings") return 16_000;
+  return DEFAULT_TIMEOUT_MS;
 }
 
 export async function callGranolaTool(
