@@ -8,6 +8,8 @@ test("ring instructions force a tool call before claiming notes are missing", ()
   assert.match(RING_INSTRUCTIONS, /prepped me/);
   assert.match(RING_INSTRUCTIONS, /unavailable/);
   assert.match(RING_INSTRUCTIONS, /not the whole sentence/);
+  assert.match(RING_INSTRUCTIONS, /Do not create an Index list item/);
+  assert.match(RING_INSTRUCTIONS, /phone notification is the notes/);
 });
 
 test("prep and todos descriptions require a tool call for spoken routing", () => {

@@ -23,13 +23,6 @@ export type ToolRun = {
   text: string;
   title: string | null;
   meetings: MeetingHit[];
-  listUsed?: string | null;
-};
-
-export const INDEX_LISTS: Record<CaptureKind, string> = {
-  afterthought: "Granola Thoughts",
-  prep: "Granola Catch Up",
-  todos: "Granola To-Dos",
 };
 
 function str(value: unknown): string {
@@ -113,7 +106,6 @@ async function runAfterthought(args: Record<string, unknown>): Promise<ToolRun> 
       text,
       title: hint ?? null,
       meetings: [],
-      listUsed: null,
     };
   }
 
@@ -149,7 +141,6 @@ async function runAfterthought(args: Record<string, unknown>): Promise<ToolRun> 
     text,
     title,
     meetings,
-    listUsed: INDEX_LISTS.afterthought,
   };
 }
 
@@ -189,7 +180,6 @@ async function runPrep(args: Record<string, unknown>): Promise<ToolRun> {
       text,
       title: topic,
       meetings: [],
-      listUsed: null,
     };
   }
 
@@ -216,7 +206,7 @@ async function runPrep(args: Record<string, unknown>): Promise<ToolRun> {
     },
   });
 
-  return { kind: "prep", text, title, meetings, listUsed: INDEX_LISTS.prep };
+  return { kind: "prep", text, title, meetings };
 }
 
 async function runTodos(args: Record<string, unknown>): Promise<ToolRun> {
@@ -241,7 +231,6 @@ async function runTodos(args: Record<string, unknown>): Promise<ToolRun> {
       text,
       title: topic ?? null,
       meetings: [],
-      listUsed: null,
     };
   }
 
@@ -266,7 +255,7 @@ async function runTodos(args: Record<string, unknown>): Promise<ToolRun> {
     source: { summary: meetingSummary(details), missed: false },
   });
 
-  return { kind: "todos", text, title, meetings, listUsed: INDEX_LISTS.todos };
+  return { kind: "todos", text, title, meetings };
 }
 
 export function toolErrorText(error: unknown): string {
@@ -283,27 +272,9 @@ export function toolErrorText(error: unknown): string {
   return clipForRing(message);
 }
 
-export function pebbleResult(
-  text: string,
-  _kind?: CaptureKind,
-  listUsed?: string | null,
-) {
-  void _kind;
-  const semanticResult = listUsed
-    ? { type: "ListItemCreation", content: text, listUsed }
-    : { type: "Response", text };
-  return {
-    content: [{ type: "text", text }],
-    structuredContent: {
-      output: text,
-      semanticResult,
-    },
-    _meta: { coreSchema: 1 },
-  };
-}
-
 export function promptText(): string {
   return RING_INSTRUCTIONS;
 }
 
+export { pebbleResult } from "./pebble-result";
 export { extractToolText } from "./text";

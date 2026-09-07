@@ -513,10 +513,36 @@ code {
 .note-summary {
   position: relative;
   z-index: 1;
-  white-space: pre-wrap;
   font-size: 0.92rem;
   line-height: 1.5;
   color: var(--mute-2);
+}
+
+.note-summary .note-h {
+  margin: 0.95rem 0 0.32rem;
+  font-family: var(--font-serif), ui-serif, Newsreader, Georgia, serif;
+  font-size: 1.02rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  color: var(--ink);
+}
+
+.note-summary .note-h:first-child {
+  margin-top: 0.15rem;
+}
+
+.note-summary ul {
+  margin: 0 0 0.45rem;
+  padding-left: 1.1rem;
+}
+
+.note-summary li {
+  margin: 0.18rem 0;
+}
+
+.note-summary p {
+  margin: 0.28rem 0;
 }
 
 .note-miss {

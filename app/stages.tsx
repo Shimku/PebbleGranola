@@ -1,6 +1,8 @@
 "use client";
 
+import { type ReactNode } from "react";
 import type { CaptureView } from "@/lib/archive";
+import { summaryBlocks } from "@/lib/summary-format";
 
 export type Mode = "afterthought" | "prep" | "todos";
 
@@ -124,9 +126,7 @@ function AfterthoughtCard({
               <span>{item.thought}</span>
             </p>
           ) : null}
-          {item.summary ? (
-            <div className="note-summary">{item.summary}</div>
-          ) : null}
+          {item.summary ? <NoteSummary text={item.summary} /> : null}
         </>
       )}
     </article>
@@ -225,6 +225,47 @@ function Lane({
       )}
     </section>
   );
+}
+
+function NoteSummary({ text }: { text: string }) {
+  const blocks = summaryBlocks(text);
+  if (!blocks.length) return null;
+
+  const nodes: ReactNode[] = [];
+  let bullets: string[] = [];
+
+  function flush() {
+    if (!bullets.length) return;
+    const items = bullets;
+    bullets = [];
+    nodes.push(
+      <ul key={`ul-${nodes.length}`}>
+        {items.map((item, index) => (
+          <li key={`${item}-${index}`}>{item}</li>
+        ))}
+      </ul>,
+    );
+  }
+
+  for (const block of blocks) {
+    if (block.type === "bullet") {
+      bullets.push(block.text);
+      continue;
+    }
+    flush();
+    if (block.type === "heading") {
+      nodes.push(
+        <h3 key={`h-${nodes.length}`} className="note-h">
+          {block.text}
+        </h3>,
+      );
+    } else {
+      nodes.push(<p key={`p-${nodes.length}`}>{block.text}</p>);
+    }
+  }
+  flush();
+
+  return <div className="note-summary">{nodes}</div>;
 }
 
 function formatWhen(iso: string): string {
