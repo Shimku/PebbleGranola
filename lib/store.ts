@@ -194,7 +194,7 @@ export async function insertCapture(input: {
   return mapCapture(rows[0]);
 }
 
-export async function listCaptures(limit = 40): Promise<Capture[]> {
+export async function listCaptures(limit = 80): Promise<Capture[]> {
   await ensureSchema();
   const rows = await db()`
     SELECT id, kind, title, hint, input, output, meeting_ids, source, created_at
@@ -228,7 +228,7 @@ export async function getStatusPayload(appUrl: string) {
   const connected = Boolean(await getGranolaOAuth());
   const account = await getGranolaAccount();
   const pebbleToken = await getPebbleToken();
-  const captures = await listCaptures(30);
+  const captures = await listCaptures(80);
   const claimUrl = neonClaimUrl();
 
   return {

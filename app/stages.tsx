@@ -1,15 +1,8 @@
 "use client";
 
-import { useRef, type KeyboardEvent } from "react";
-import { splitLedger } from "@/lib/ledger";
+import type { CaptureView } from "@/lib/archive";
 
 export type Mode = "afterthought" | "prep" | "todos";
-
-export type ToolResult = {
-  text: string;
-  title: string | null;
-  meetings: { id: string; title: string; date: string | null }[];
-};
 
 export const MODES: {
   id: Mode;
@@ -27,252 +20,152 @@ export function kindLabel(kind: Mode) {
   return "Open loops";
 }
 
-export function ToolStage({
+export function ArchiveStage({
   mode,
-  utterance,
-  onUtterance,
-  result,
-  busy,
-  canRun,
-  onRun,
+  items,
+  connected,
 }: {
   mode: Mode;
-  utterance: string;
-  onUtterance: (value: string) => void;
-  result: ToolResult | null;
-  busy: boolean;
-  canRun: boolean;
-  onRun: () => void;
+  items: CaptureView[];
+  connected: boolean;
 }) {
-  const lines = resultLines(result?.text ?? null);
-  const ledger = splitLedger(lines);
-  const meeting = result?.title ?? result?.meetings[0]?.title ?? null;
-
-  function onKeyDown(
-    event: KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>,
-  ) {
-    if (!canRun) return;
-    if (mode === "afterthought") {
-      if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-        event.preventDefault();
-        onRun();
-      }
-      return;
-    }
-    if (event.key === "Enter") {
-      event.preventDefault();
-      onRun();
-    }
+  if (!items.length) {
+    return (
+      <EmptyArchive mode={mode} connected={connected} />
+    );
   }
 
+  return (
+    <div className="archive-stack">
+      {items.map((item) => (
+        <ArchiveCard key={item.id} mode={mode} item={item} />
+      ))}
+    </div>
+  );
+}
+
+function EmptyArchive({
+  mode,
+  connected,
+}: {
+  mode: Mode;
+  connected: boolean;
+}) {
+  const copy =
+    mode === "afterthought"
+      ? "Afterthoughts from the ring land here. The Granola summary stays underneath your new line."
+      : mode === "prep"
+        ? "Prep briefs from the ring land here. Newest on top."
+        : "Open items from the ring land here. Newest on top.";
+
+  return (
+    <div className="archive-empty">
+      <p>{copy}</p>
+      <p className="archive-empty-sub">
+        {connected
+          ? "This page is read-only. Double-click and hold the ring to add the next one."
+          : "Connect Granola, then pair the ring. This page will not ask you to type."}
+      </p>
+    </div>
+  );
+}
+
+function ArchiveCard({ mode, item }: { mode: Mode; item: CaptureView }) {
   if (mode === "afterthought") {
-    return (
-      <AfterthoughtView
-        thought={utterance}
-        onThought={onUtterance}
-        onKeyDown={onKeyDown}
-        meeting={meeting}
-        lines={lines}
-        busy={busy}
-        canRun={canRun}
-        onRun={onRun}
-      />
-    );
+    return <AfterthoughtCard item={item} />;
   }
-
   if (mode === "prep") {
-    return (
-      <PrepView
-        who={utterance}
-        onWho={onUtterance}
-        onKeyDown={onKeyDown}
-        lines={lines}
-        busy={busy}
-        canRun={canRun}
-        onRun={onRun}
-      />
-    );
+    return <PrepCard item={item} />;
   }
+  return <OweCard item={item} />;
+}
 
+function AfterthoughtCard({ item }: { item: CaptureView }) {
   return (
-    <OweView
-      who={utterance}
-      onWho={onUtterance}
-      onKeyDown={onKeyDown}
-      you={ledger.you}
-      them={ledger.them}
-      busy={busy}
-      canRun={canRun}
-      onRun={onRun}
-    />
+    <article className="note note-readonly">
+      <span className="note-spine" aria-hidden />
+      <header className="note-head">
+        <p className="note-meeting font-serif-italic">{item.title}</p>
+        <time className="note-when" dateTime={item.created_at}>
+          {item.when ?? formatWhen(item.created_at)}
+        </time>
+      </header>
+      {item.missed ? (
+        <p className="note-miss">{item.output}</p>
+      ) : (
+        <>
+          {item.thought ? (
+            <p className="note-thought">
+              <span>{item.thought}</span>
+            </p>
+          ) : null}
+          {item.summary ? (
+            <div className="note-summary">{item.summary}</div>
+          ) : null}
+        </>
+      )}
+    </article>
   );
 }
 
-function AfterthoughtView({
-  thought,
-  onThought,
-  onKeyDown,
-  meeting,
-  lines,
-  busy,
-  canRun,
-  onRun,
-}: {
-  thought: string;
-  onThought: (value: string) => void;
-  onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
-  meeting: string | null;
-  lines: string[];
-  busy: boolean;
-  canRun: boolean;
-  onRun: () => void;
-}) {
-  const areaRef = useRef<HTMLTextAreaElement>(null);
+function PrepCard({ item }: { item: CaptureView }) {
+  const lines = item.missed
+    ? []
+    : item.bullets.length
+      ? item.bullets
+      : item.output
+          .split("\n")
+          .map((line) => line.replace(/^[-•*]\s*/, "").trim())
+          .filter((line) => line && !/^prep\b/i.test(line));
 
   return (
-    <div className={`tool tool-note ${busy ? "is-busy" : ""}`}>
-      <article className="note" onClick={() => areaRef.current?.focus()}>
-        <span className="note-spine" aria-hidden />
-        {meeting ? (
-          <p className="note-meeting font-serif-italic">{meeting}</p>
-        ) : null}
-        <div className="note-write">
-          <div className="note-hl" aria-hidden>
-            <Highlight text={thought} />
-          </div>
-          <textarea
-            ref={areaRef}
-            id="field-afterthought"
-            aria-label="Thought"
-            value={thought}
-            onChange={(event) => onThought(event.target.value)}
-            onKeyDown={onKeyDown}
-            spellCheck={false}
+    <article className="lock lock-readonly">
+      <header className="lock-head">
+        <p className="lock-app">Index</p>
+        <time className="lock-when" dateTime={item.created_at}>
+          {formatWhen(item.created_at)}
+        </time>
+      </header>
+      <p className="lock-kicker">For</p>
+      <p className="lock-who-read font-serif">{item.title}</p>
+      <div className={`lock-body ${lines.length || item.missed ? "" : "is-empty"}`}>
+        {item.missed ? (
+          <p>{item.output}</p>
+        ) : (
+          lines.slice(0, 4).map((line) => <p key={line}>{line}</p>)
+        )}
+      </div>
+    </article>
+  );
+}
+
+function OweCard({ item }: { item: CaptureView }) {
+  const you = item.you.slice(0, 4);
+  const them = item.them.slice(0, 4);
+  const fallback =
+    !you.length && !them.length
+      ? item.bullets.slice(0, 4)
+      : [];
+
+  return (
+    <article className="tool-owe tool-owe-readonly">
+      <header className="owe-head owe-head-read">
+        <p className="owe-title font-serif">{item.title}</p>
+        <time dateTime={item.created_at}>{formatWhen(item.created_at)}</time>
+      </header>
+      {item.missed ? (
+        <p className="note-miss">{item.output}</p>
+      ) : (
+        <div className="ledger">
+          <Lane
+            label="You"
+            tone="you"
+            items={you.length ? you : fallback}
           />
+          <Lane label="Them" tone="them" items={them} />
         </div>
-        <footer className="note-foot">
-          {busy || lines.length > 0 ? (
-            <aside className="ink-chip">
-              <p className="ink-app">Index</p>
-              {busy ? (
-                <span className="ink-meter" aria-hidden />
-              ) : (
-                <p className="ink-copy">{lines.join(" ")}</p>
-              )}
-            </aside>
-          ) : (
-            <span />
-          )}
-          <IndexRun busy={busy} disabled={!canRun} onRun={onRun} />
-        </footer>
-      </article>
-    </div>
-  );
-}
-
-function Highlight({ text }: { text: string }) {
-  if (!text) return null;
-  const endsWithBreak = text.endsWith("\n");
-  const body = text.replace(/ $/, "\u00a0");
-  return (
-    <>
-      <span>{body}</span>
-      {endsWithBreak ? <br /> : null}
-    </>
-  );
-}
-
-function PrepView({
-  who,
-  onWho,
-  onKeyDown,
-  lines,
-  busy,
-  canRun,
-  onRun,
-}: {
-  who: string;
-  onWho: (value: string) => void;
-  onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
-  lines: string[];
-  busy: boolean;
-  canRun: boolean;
-  onRun: () => void;
-}) {
-  const whoRef = useRef<HTMLInputElement>(null);
-
-  return (
-    <div className={`tool tool-brief ${busy ? "is-busy" : ""}`}>
-      <article className="lock" onClick={() => whoRef.current?.focus()}>
-        <header className="lock-head">
-          <p className="lock-app">Index</p>
-          {busy ? <span className="ink-meter lock-head-meter" aria-hidden /> : null}
-        </header>
-        <label className="lock-kicker" htmlFor="field-prep">
-          For
-        </label>
-        <input
-          ref={whoRef}
-          id="field-prep"
-          className="lock-who font-serif"
-          value={who}
-          onChange={(event) => onWho(event.target.value)}
-          onKeyDown={onKeyDown}
-          autoComplete="off"
-          spellCheck={false}
-        />
-        <div className={`lock-body ${lines.length ? "" : "is-empty"}`}>
-          {lines.map((line) => (
-            <p key={line}>{line}</p>
-          ))}
-        </div>
-        <footer className="lock-foot">
-          <IndexRun busy={busy} disabled={!canRun} onRun={onRun} />
-        </footer>
-      </article>
-    </div>
-  );
-}
-
-function OweView({
-  who,
-  onWho,
-  onKeyDown,
-  you,
-  them,
-  busy,
-  canRun,
-  onRun,
-}: {
-  who: string;
-  onWho: (value: string) => void;
-  onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
-  you: string[];
-  them: string[];
-  busy: boolean;
-  canRun: boolean;
-  onRun: () => void;
-}) {
-  return (
-    <div className={`tool tool-owe ${busy ? "is-busy" : ""}`}>
-      <div className="owe-head">
-        <input
-          id="field-owe"
-          className="owe-filter"
-          value={who}
-          onChange={(event) => onWho(event.target.value)}
-          onKeyDown={onKeyDown}
-          autoComplete="off"
-          spellCheck={false}
-          aria-label="Person or client, optional"
-        />
-        <IndexRun busy={busy} disabled={!canRun} onRun={onRun} />
-      </div>
-      <div className="ledger">
-        <Lane label="You" tone="you" items={you} />
-        <Lane label="Them" tone="them" items={them} />
-      </div>
-    </div>
+      )}
+    </article>
   );
 }
 
@@ -295,12 +188,12 @@ function Lane({
         <div className="lane-sheet" aria-hidden />
       ) : (
         <ul className="lane-sheet">
-          {items.map((item, index) => (
+          {items.map((entry, index) => (
             <li
-              key={`${item}-${index}`}
+              key={`${entry}-${index}`}
               style={{ animationDelay: `${index * 55}ms` }}
             >
-              {item}
+              {entry.replace(/^[-•*]\s*/, "")}
             </li>
           ))}
         </ul>
@@ -309,34 +202,13 @@ function Lane({
   );
 }
 
-function IndexRun({
-  busy,
-  disabled,
-  onRun,
-}: {
-  busy: boolean;
-  disabled: boolean;
-  onRun: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      className={`index-run ${busy ? "is-busy" : ""}`}
-      disabled={disabled}
-      onClick={onRun}
-      aria-label={busy ? "Running" : "Run without the ring"}
-      title="Without the ring"
-    >
-      <span className={`index-cap ${busy ? "is-live" : ""}`} aria-hidden />
-      <span>Run</span>
-    </button>
-  );
-}
-
-function resultLines(result: string | null) {
-  if (!result) return [];
-  return result
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
+function formatWhen(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }

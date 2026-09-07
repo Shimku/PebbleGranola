@@ -1,31 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  deskFromCaptures,
-  draftFromCapture,
-  resultFromCapture,
-  type DeskCapture,
-} from "@/lib/desk";
+  capturesInThread,
+  threadsFromCaptures,
+  type ArchiveCapture,
+} from "@/lib/archive";
 import { RingMark } from "./mark";
-import {
-  MODES,
-  ToolStage,
-  kindLabel,
-  type Mode,
-  type ToolResult,
-} from "./stages";
+import { ArchiveStage, MODES, type Mode } from "./stages";
 
-export type Capture = {
-  id: string;
-  kind: "afterthought" | "prep" | "todos";
-  title: string | null;
-  hint: string | null;
-  input: string;
-  output: string;
-  meeting_ids: string[];
-  created_at: string;
-};
+export type Capture = ArchiveCapture;
 
 export type StatusPayload = {
   connected: boolean;
@@ -39,64 +23,31 @@ export type StatusPayload = {
   error?: string;
 };
 
-const EMPTY_DRAFTS: Record<Mode, string> = {
-  afterthought: "",
-  prep: "",
-  todos: "",
-};
-
-const EMPTY_RESULTS: Record<Mode, ToolResult | null> = {
-  afterthought: null,
-  prep: null,
-  todos: null,
-};
-
-const EMPTY_DIRTY: Record<Mode, boolean> = {
-  afterthought: false,
-  prep: false,
-  todos: false,
-};
-
-function seedDesk(captures: Capture[]) {
-  const seeded = deskFromCaptures(captures as DeskCapture[]);
-  return {
-    drafts: { ...EMPTY_DRAFTS, ...seeded.drafts },
-    results: { ...EMPTY_RESULTS, ...seeded.results } as Record<
-      Mode,
-      ToolResult | null
-    >,
-  };
-}
-
 export function Dashboard({ initial }: { initial: StatusPayload }) {
   const [status, setStatus] = useState(initial);
   const [mode, setMode] = useState<Mode>("afterthought");
-  const [drafts, setDrafts] = useState(
-    () => seedDesk(initial.captures ?? []).drafts,
+  const [thread, setThread] = useState<string | null>(() =>
+    threadsFromCaptures(initial.captures ?? [])[0]?.key ?? null,
   );
-  const [results, setResults] = useState(
-    () => seedDesk(initial.captures ?? []).results,
-  );
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(initial.error ?? null);
   const [copied, setCopied] = useState<string | null>(null);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const dirty = useRef({ ...EMPTY_DIRTY });
+  const pinned = useRef(false);
 
-  const utterance = drafts[mode];
-  const result = results[mode];
-
-  function setUtterance(value: string) {
-    dirty.current[mode] = true;
-    setDrafts((prev) => ({ ...prev, [mode]: value }));
-  }
+  const captures = useMemo(() => status.captures ?? [], [status.captures]);
+  const threads = useMemo(() => threadsFromCaptures(captures), [captures]);
+  const activeThread = thread && threads.some((item) => item.key === thread)
+    ? thread
+    : threads[0]?.key ?? null;
+  const items = activeThread
+    ? capturesInThread(captures, activeThread, mode)
+    : [];
 
   useEffect(() => {
     void refreshStatus();
     const tick = window.setInterval(() => {
       if (document.visibilityState === "hidden") return;
       void refreshStatus();
-    }, 4000);
+    }, 2800);
     return () => window.clearInterval(tick);
   }, []);
 
@@ -109,44 +60,17 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
   async function refreshStatus() {
     const response = await fetch("/api/status", { cache: "no-store" });
     const json = (await response.json()) as StatusPayload;
-    const captures = json.captures ?? [];
+    const nextCaptures = json.captures ?? [];
     setStatus((prev) => ({
       ...prev,
       ...json,
-      captures,
+      captures: nextCaptures,
     }));
-    const incoming = deskFromCaptures(captures as DeskCapture[]);
-    setDrafts((prev) => {
-      const next = { ...prev };
-      for (const kind of MODES) {
-        if (dirty.current[kind.id]) continue;
-        next[kind.id] = incoming.drafts[kind.id];
-      }
-      return next;
-    });
-    setResults((prev) => {
-      const next = { ...prev };
-      for (const kind of MODES) {
-        if (dirty.current[kind.id]) continue;
-        next[kind.id] = incoming.results[kind.id];
-      }
-      return next;
-    });
+    const nextThreads = threadsFromCaptures(nextCaptures);
+    if (!pinned.current && nextThreads[0]) {
+      setThread(nextThreads[0].key);
+    }
     if (json.error) setError(json.error);
-  }
-
-  function openCapture(capture: Capture) {
-    dirty.current[capture.kind] = true;
-    setMode(capture.kind);
-    setActiveId(capture.id);
-    setDrafts((prev) => ({
-      ...prev,
-      [capture.kind]: draftFromCapture(capture as DeskCapture),
-    }));
-    setResults((prev) => ({
-      ...prev,
-      [capture.kind]: resultFromCapture(capture as DeskCapture),
-    }));
   }
 
   async function copy(label: string, value: string) {
@@ -154,67 +78,10 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
     setCopied(label);
   }
 
-  async function tryTool() {
-    const tool = mode;
-    const spoken = drafts[tool];
-    setBusy(true);
-    setError(null);
-    setResults((prev) => ({ ...prev, [tool]: null }));
-    try {
-      const wantsPitch =
-        /pitch/i.test(spoken) ||
-        /visual canvas/i.test(spoken) ||
-        /\bsorta\b/i.test(spoken);
-      const wantsWeek = /\b(this week|all meetings)\b/i.test(spoken);
-      const args =
-        tool === "afterthought"
-          ? { thought: spoken }
-          : {
-              who_or_topic: spoken,
-              scope:
-                tool === "prep"
-                  ? wantsPitch
-                    ? "pitch"
-                    : "last"
-                  : wantsWeek
-                    ? "recent"
-                    : "last",
-            };
-
-      const response = await fetch("/api/try", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tool,
-          args,
-        }),
-      });
-      const json = (await response.json()) as ToolResult & { error?: string };
-      if (!response.ok) throw new Error(json.error || "Request failed");
-      setResults((prev) => ({
-        ...prev,
-        [tool]: {
-          text: json.text,
-          title: json.title ?? null,
-          meetings: json.meetings ?? [],
-        },
-      }));
-      await refreshStatus();
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Try failed");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function disconnect() {
     await fetch("/api/granola/disconnect", { method: "POST" });
     await refreshStatus();
   }
-
-  const ready =
-    status.connected && (mode === "todos" || utterance.trim().length > 0);
-  const canRun = ready && !busy;
 
   return (
     <div className="app-shell">
@@ -279,6 +146,35 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
 
       <div className="app-grid">
         <section className="workspace" aria-labelledby="tool-tabs">
+          {threads.length > 0 ? (
+            <div className="thread-rail" role="tablist" aria-label="Threads">
+              {threads.map((item) => {
+                const selected = item.key === activeThread;
+                return (
+                  <button
+                    type="button"
+                    role="tab"
+                    key={item.key}
+                    className={`thread-chip ${selected ? "is-on" : ""}`}
+                    aria-selected={selected}
+                    onClick={() => {
+                      pinned.current = true;
+                      setThread(item.key);
+                    }}
+                  >
+                    <span className="thread-name">{item.label}</span>
+                    <span className="thread-count">{item.count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+
+          <p className="archive-hint">
+            Read-only overview. New ring asks land on top. Past ones stay in the
+            thread.
+          </p>
+
           <div
             className="tabs"
             role="tablist"
@@ -310,15 +206,10 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
             id="tool-panel"
             aria-labelledby={`tab-${mode}`}
           >
-            <ToolStage
-              key={mode}
+            <ArchiveStage
               mode={mode}
-              utterance={utterance}
-              onUtterance={setUtterance}
-              result={result}
-              busy={busy}
-              canRun={canRun}
-              onRun={() => void tryTool()}
+              items={items}
+              connected={status.connected}
             />
           </div>
         </section>
@@ -348,8 +239,9 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
             <li>Double click and hold → this sandbox.</li>
             <li>Single-click stays normal notes.</li>
             <li>
-              Visual canvas pitches are Granola notes titled{" "}
-              <span className="pair-emph">Sorta{"<>"}Name Xxx</span>.
+              This site is the folder tree. Index lists (Granola thoughts, todos,
+              catch up) stay yours. We reply in the Index thread. We do not write
+              an empty note when a name misses.
             </li>
           </ol>
           <CopyField
@@ -368,45 +260,6 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
           />
         </aside>
       </div>
-
-      <section className="notes" aria-labelledby="notes-title">
-        <div className="notes-head">
-          <h2 id="notes-title">Log</h2>
-        </div>
-        {(status.captures ?? []).length === 0 ? (
-          <p className="notes-empty">Nothing yet.</p>
-        ) : (
-          <div className="notes-list">
-            {(status.captures ?? []).map((capture) => (
-              <button
-                type="button"
-                key={capture.id}
-                className={`note-row ${activeId === capture.id ? "is-on" : ""}`}
-                onClick={() => openCapture(capture)}
-              >
-                <div className="note-row-meta">
-                  <span
-                    className={`kind-dot kind-${capture.kind}`}
-                    aria-hidden
-                  />
-                  <span>{kindLabel(capture.kind)}</span>
-                  <time
-                    dateTime={capture.created_at}
-                    suppressHydrationWarning
-                  >
-                    {new Date(capture.created_at).toLocaleString()}
-                  </time>
-                  {capture.title ? (
-                    <span className="note-row-title">{capture.title}</span>
-                  ) : null}
-                </div>
-                <p className="note-row-out">{capture.output}</p>
-                <p className="note-row-in">{capture.input}</p>
-              </button>
-            ))}
-          </div>
-        )}
-      </section>
     </div>
   );
 }
