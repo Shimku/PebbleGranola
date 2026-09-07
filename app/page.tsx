@@ -1,4 +1,4 @@
-import { appUrlFromRequest } from "@/lib/config";
+import { appUrlFromRequest, MISSING_DB_MESSAGE } from "@/lib/config";
 import { Dashboard, type StatusPayload } from "./dashboard";
 import { getStatusPayload, hasDatabaseUrl } from "@/lib/store";
 
@@ -32,7 +32,7 @@ export default async function Page({
       };
     }
   } else {
-    initial.error = "DATABASE_URL is not set";
+    initial.error = MISSING_DB_MESSAGE;
   }
 
   if (params.error) {

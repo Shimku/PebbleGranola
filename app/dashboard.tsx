@@ -173,10 +173,19 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
             >
               Disconnect
             </button>
-          ) : (
+          ) : status.hasDatabase ? (
             <a href="/api/granola/connect" className="olive-btn">
               Connect Granola
             </a>
+          ) : (
+            <button
+              type="button"
+              className="olive-btn"
+              disabled
+              title="Needs DATABASE_URL"
+            >
+              Connect Granola
+            </button>
           )}
         </div>
       </header>

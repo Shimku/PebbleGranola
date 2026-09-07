@@ -1,4 +1,4 @@
-import { appUrlFromRequest } from "@/lib/config";
+import { appUrlFromRequest, MISSING_DB_MESSAGE } from "@/lib/config";
 import { getStatusPayload, hasDatabaseUrl } from "@/lib/store";
 
 export const runtime = "nodejs";
@@ -19,7 +19,7 @@ export async function GET(request: Request) {
   if (!hasDatabaseUrl()) {
     return Response.json({
       ...EMPTY_STATUS,
-      error: "DATABASE_URL is not set",
+      error: MISSING_DB_MESSAGE,
     });
   }
 

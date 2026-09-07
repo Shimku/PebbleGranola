@@ -7,8 +7,14 @@ export const GRANOLA_MCP_URL = "https://mcp.granola.ai/mcp";
 export const GRANOLA_RESOURCE = "https://mcp.granola.ai/mcp";
 export const GRANOLA_AUTH_ISSUER = "https://mcp-auth.granola.ai";
 
+export const MISSING_DB_MESSAGE =
+  "Connect Granola needs Postgres. This deploy has no DATABASE_URL, so login cannot start.";
+
 export function databaseUrl(): string | null {
-  const env = process.env.DATABASE_URL?.trim();
+  const env =
+    process.env.DATABASE_URL?.trim() ||
+    process.env.POSTGRES_URL?.trim() ||
+    process.env.POSTGRES_PRISMA_URL?.trim();
   const raw = env || INJECTED_DATABASE_URL.trim() || null;
   if (!raw) return null;
   try {
