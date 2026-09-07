@@ -883,14 +883,7 @@ code {
 }
 
 div.lane-sheet {
-  min-height: 6.6rem;
-  background-image: repeating-linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent 2.15rem,
-    var(--line) 2.15rem,
-    var(--line) 2.2rem
-  );
+  min-height: 4.5rem;
 }
 
 .index-run {
