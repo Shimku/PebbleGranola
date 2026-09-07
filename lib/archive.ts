@@ -1,5 +1,7 @@
 import { bulletLines } from "./bullets.ts";
 import { splitLedger } from "./ledger.ts";
+import { meetingSummary } from "./meeting-parse.ts";
+import { granolaAnswer } from "./text.ts";
 import { cleanMeetingDate, cleanMeetingTitle, shortDate } from "./title.ts";
 import {
   preferThreadLabel,
@@ -55,6 +57,40 @@ function asText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function summaryFromSource(source: Record<string, unknown>, kind: CaptureKind): string {
+  const stored = asText(source.summary);
+  if (stored) return stored;
+  const fromDetails = meetingSummary(source.details);
+  if (fromDetails) return fromDetails;
+  if (kind !== "afterthought") return "";
+  const granola = granolaAnswer(asText(source.granola));
+  if (!granola) return "";
+  if (/internal instructions|not able to share|i need to search/i.test(granola)) {
+    return "";
+  }
+  if (/no meeting notes are available/i.test(granola)) return "";
+  return granola.slice(0, 2800);
+}
+
+export function slimCapture(capture: ArchiveCapture): ArchiveCapture {
+  const source = asSource(capture.source);
+  return {
+    ...capture,
+    title: cleanMeetingTitle(capture.title) || capture.title,
+    source: {
+      summary: summaryFromSource(source, capture.kind),
+      thought:
+        asText(source.thought) ||
+        (capture.kind === "afterthought" ? capture.input.trim() : ""),
+      meetingTitle:
+        cleanMeetingTitle(asText(source.meetingTitle)) ||
+        cleanMeetingTitle(capture.title),
+      meetingDate: asText(source.meetingDate) || cleanMeetingDate(capture.title, null),
+      missed: source.missed === true,
+    },
+  };
+}
+
 export function viewFromCapture(capture: ArchiveCapture): CaptureView {
   const source = asSource(capture.source);
   const title =
@@ -71,7 +107,7 @@ export function viewFromCapture(capture: ArchiveCapture): CaptureView {
   const thought =
     asText(source.thought) ||
     (capture.kind === "afterthought" ? capture.input.trim() : "");
-  const summary = asText(source.summary);
+  const summary = summaryFromSource(source, capture.kind);
   const missed = source.missed === true;
   const bullets = bulletLines(capture.output, 4);
   const ledger = splitLedger(

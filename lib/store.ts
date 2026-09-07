@@ -1,5 +1,6 @@
 import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
 import { randomBytes } from "node:crypto";
+import { slimCapture } from "./archive";
 import { databaseUrl, envPebbleToken, neonClaimUrl } from "./config";
 
 type Sql = NeonQueryFunction<false, false>;
@@ -205,6 +206,18 @@ export async function listCaptures(limit = 80): Promise<Capture[]> {
   return rows.map(mapCapture);
 }
 
+export async function deleteCaptures(ids: string[]): Promise<number> {
+  const unique = [...new Set(ids.map((id) => id.trim()).filter(Boolean))];
+  if (!unique.length) return 0;
+  await ensureSchema();
+  let removed = 0;
+  for (const id of unique) {
+    const rows = await db()`DELETE FROM captures WHERE id = ${id} RETURNING id`;
+    if (rows[0]) removed += 1;
+  }
+  return removed;
+}
+
 function mapCapture(row: Record<string, unknown>): Capture {
   return {
     id: String(row.id),
@@ -228,7 +241,7 @@ export async function getStatusPayload(appUrl: string) {
   const connected = Boolean(await getGranolaOAuth());
   const account = await getGranolaAccount();
   const pebbleToken = await getPebbleToken();
-  const captures = await listCaptures(80);
+  const captures = (await listCaptures(80)).map(slimCapture);
   const claimUrl = neonClaimUrl();
 
   return {

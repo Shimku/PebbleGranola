@@ -32,7 +32,8 @@ If they say "last meeting", "the call I just had", or name nothing, omit the hin
 If they say "last call with X" use scope "last". If they say "this week" or "all meetings with X" use scope "recent".
 Visual canvas / Sorta pitches are Granola notes titled like "Sorta<>Name Xxx". If they say visual canvas, Sorta, or a Sorta<> title, pass those words through. Use scope "pitch" for coaching.
 
-Never invent a meeting. If the tool says nothing matched, say that. Do not create an empty note.`;
+Never invent a meeting. If the tool says nothing matched, say that. Do not create an empty note.
+On a real match, Index files into Granola Thoughts (afterthought), Granola Catch Up (prep), or Granola To-Dos (owe).`;
 
 export const RING_PROMPT = {
   name: "ring_voice",
@@ -111,6 +112,13 @@ export type ToolRun = {
   text: string;
   title: string | null;
   meetings: MeetingHit[];
+  listUsed?: string | null;
+};
+
+export const INDEX_LISTS: Record<CaptureKind, string> = {
+  afterthought: "Granola Thoughts",
+  prep: "Granola Catch Up",
+  todos: "Granola To-Dos",
 };
 
 function str(value: unknown): string {
@@ -189,7 +197,13 @@ async function runAfterthought(args: Record<string, unknown>): Promise<ToolRun> 
       meeting_ids: [],
       source: { thought, missed: true },
     });
-    return { kind: "afterthought", text, title: hint ?? null, meetings: [] };
+    return {
+      kind: "afterthought",
+      text,
+      title: hint ?? null,
+      meetings: [],
+      listUsed: null,
+    };
   }
 
   const target = meetings[0];
@@ -219,7 +233,13 @@ async function runAfterthought(args: Record<string, unknown>): Promise<ToolRun> 
     },
   });
 
-  return { kind: "afterthought", text, title, meetings };
+  return {
+    kind: "afterthought",
+    text,
+    title,
+    meetings,
+    listUsed: INDEX_LISTS.afterthought,
+  };
 }
 
 async function briefFromNotes(
@@ -264,7 +284,13 @@ async function runPrep(args: Record<string, unknown>): Promise<ToolRun> {
       meeting_ids: [],
       source: { missed: true },
     });
-    return { kind: "prep", text, title: topic, meetings: [] };
+    return {
+      kind: "prep",
+      text,
+      title: topic,
+      meetings: [],
+      listUsed: null,
+    };
   }
 
   const details = meetings.length
@@ -314,7 +340,7 @@ async function runPrep(args: Record<string, unknown>): Promise<ToolRun> {
     },
   });
 
-  return { kind: "prep", text, title, meetings };
+  return { kind: "prep", text, title, meetings, listUsed: INDEX_LISTS.prep };
 }
 
 async function runTodos(args: Record<string, unknown>): Promise<ToolRun> {
@@ -334,7 +360,13 @@ async function runTodos(args: Record<string, unknown>): Promise<ToolRun> {
       meeting_ids: [],
       source: { missed: true },
     });
-    return { kind: "todos", text, title: topic ?? null, meetings: [] };
+    return {
+      kind: "todos",
+      text,
+      title: topic ?? null,
+      meetings: [],
+      listUsed: null,
+    };
   }
 
   const details = meetings.length
@@ -373,7 +405,7 @@ async function runTodos(args: Record<string, unknown>): Promise<ToolRun> {
     source: { summary: meetingSummary(details), missed: false },
   });
 
-  return { kind: "todos", text, title, meetings };
+  return { kind: "todos", text, title, meetings, listUsed: INDEX_LISTS.todos };
 }
 
 export function toolErrorText(error: unknown): string {
@@ -390,13 +422,20 @@ export function toolErrorText(error: unknown): string {
   return clipForRing(message);
 }
 
-export function pebbleResult(text: string, kind?: CaptureKind) {
-  void kind;
+export function pebbleResult(
+  text: string,
+  _kind?: CaptureKind,
+  listUsed?: string | null,
+) {
+  void _kind;
+  const semanticResult = listUsed
+    ? { type: "ListItemCreation", content: text, listUsed }
+    : { type: "Response", text };
   return {
     content: [{ type: "text", text }],
     structuredContent: {
       output: text,
-      semanticResult: { type: "Response", text },
+      semanticResult,
     },
     _meta: { coreSchema: 1 },
   };

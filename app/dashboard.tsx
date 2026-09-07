@@ -31,15 +31,21 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
   );
   const [error, setError] = useState<string | null>(initial.error ?? null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [showPair, setShowPair] = useState(!initial.connected);
   const pinned = useRef(false);
+  const pairRef = useRef<HTMLElement | null>(null);
 
   const captures = useMemo(() => status.captures ?? [], [status.captures]);
   const threads = useMemo(() => threadsFromCaptures(captures), [captures]);
-  const activeThread = thread && threads.some((item) => item.key === thread)
-    ? thread
-    : threads[0]?.key ?? null;
+  const activeThread =
+    thread && threads.some((item) => item.key === thread)
+      ? thread
+      : threads[0]?.key ?? null;
   const items = activeThread
     ? capturesInThread(captures, activeThread, mode)
+    : [];
+  const threadIds = activeThread
+    ? capturesInThread(captures, activeThread).map((item) => item.id)
     : [];
 
   useEffect(() => {
@@ -80,7 +86,32 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
 
   async function disconnect() {
     await fetch("/api/granola/disconnect", { method: "POST" });
+    setShowPair(true);
     await refreshStatus();
+  }
+
+  async function removeIds(ids: string[]) {
+    if (!ids.length) return;
+    pinned.current = true;
+    setStatus((prev) => ({
+      ...prev,
+      captures: (prev.captures ?? []).filter(
+        (capture) => !ids.includes(capture.id),
+      ),
+    }));
+    await fetch("/api/captures", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+    await refreshStatus();
+  }
+
+  function openPair() {
+    setShowPair(true);
+    window.requestAnimationFrame(() => {
+      pairRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
   return (
@@ -103,9 +134,9 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
                 : "Granola not connected"
             }
           />
-          <a className="text-link" href="#pair">
+          <button type="button" className="text-link" onClick={openPair}>
             Pair
-          </a>
+          </button>
           {status.connected ? (
             <button
               type="button"
@@ -137,43 +168,52 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
         </div>
       ) : null}
 
-      {status.claimUrl ? (
+      {status.claimUrl && !status.connected ? (
         <p className="banner banner-mute">
           This demo database lasts 72 hours unless you{" "}
           <a href={status.claimUrl}>claim it in Neon</a>.
         </p>
       ) : null}
 
-      <div className="app-grid">
+      <div className={`app-grid ${showPair ? "" : "is-solo"}`}>
         <section className="workspace" aria-labelledby="tool-tabs">
           {threads.length > 0 ? (
             <div className="thread-rail" role="tablist" aria-label="Threads">
               {threads.map((item) => {
                 const selected = item.key === activeThread;
                 return (
-                  <button
-                    type="button"
-                    role="tab"
+                  <div
                     key={item.key}
                     className={`thread-chip ${selected ? "is-on" : ""}`}
-                    aria-selected={selected}
-                    onClick={() => {
-                      pinned.current = true;
-                      setThread(item.key);
-                    }}
                   >
-                    <span className="thread-name">{item.label}</span>
-                    <span className="thread-count">{item.count}</span>
-                  </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      className="thread-chip-hit"
+                      aria-selected={selected}
+                      onClick={() => {
+                        pinned.current = true;
+                        setThread(item.key);
+                      }}
+                    >
+                      <span className="thread-name">{item.label}</span>
+                      <span className="thread-count">{item.count}</span>
+                    </button>
+                    {selected ? (
+                      <button
+                        type="button"
+                        className="thread-remove"
+                        aria-label={`Remove ${item.label}`}
+                        onClick={() => void removeIds(threadIds)}
+                      >
+                        ×
+                      </button>
+                    ) : null}
+                  </div>
                 );
               })}
             </div>
           ) : null}
-
-          <p className="archive-hint">
-            Read-only overview. New ring asks land on top. Past ones stay in the
-            thread.
-          </p>
 
           <div
             className="tabs"
@@ -210,55 +250,67 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
               mode={mode}
               items={items}
               connected={status.connected}
+              onDelete={(id) => void removeIds([id])}
             />
           </div>
         </section>
 
-        <aside className="pair steel-panel" id="pair">
-          <div className="pair-head">
-            <p className="kicker kicker-light">Pair the ring</p>
-            <span className="index-badge">INDEX 01</span>
-          </div>
-          <h2>Pebble setup</h2>
-          <p className="pair-status">
-            Granola:{" "}
-            {status.connected
-              ? status.account?.email ?? "connected"
-              : "not connected"}
-          </p>
-          <ol className="pair-steps">
-            <li>Connect Granola on this page. Free tier is fine.</li>
-            <li>
-              Pebble app → Index → MCP &amp; Tool Settings → new sandbox.
-              Model: Default or High Capability (cloud).
-            </li>
-            <li>Add MCP. Streamable HTTP on. URL and Bearer below.</li>
-            <li>
-              Enable the <span className="pair-emph">ring_voice</span> prompt.
-            </li>
-            <li>Double click and hold → this sandbox.</li>
-            <li>Single-click stays normal notes.</li>
-            <li>
-              This site is the folder tree. Index lists (Granola thoughts, todos,
-              catch up) stay yours. We reply in the Index thread. We do not write
-              an empty note when a name misses.
-            </li>
-          </ol>
-          <CopyField
-            label="MCP URL"
-            value={status.mcpUrl}
-            copied={copied === "url"}
-            onCopy={() => void copy("url", status.mcpUrl)}
-          />
-          <CopyField
-            label="Authorization"
-            value={status.pebbleToken ? `Bearer ${status.pebbleToken}` : ""}
-            copied={copied === "token"}
-            onCopy={() =>
-              void copy("token", `Bearer ${status.pebbleToken}`)
-            }
-          />
-        </aside>
+        {showPair ? (
+          <aside className="pair steel-panel" id="pair" ref={pairRef}>
+            <div className="pair-head">
+              <p className="kicker kicker-light">Pair the ring</p>
+              <span className="index-badge">INDEX 01</span>
+            </div>
+            <h2>Pebble setup</h2>
+            <p className="pair-status">
+              Granola:{" "}
+              {status.connected
+                ? status.account?.email ?? "connected"
+                : "not connected"}
+            </p>
+            <ol className="pair-steps">
+              <li>Connect Granola on this page.</li>
+              <li>
+                Pebble app → Index → MCP &amp; Tool Settings → new sandbox.
+                Model: Default or High Capability (cloud).
+              </li>
+              <li>Add MCP. Streamable HTTP on. URL and Bearer below.</li>
+              <li>
+                Enable the <span className="pair-emph">ring_voice</span> prompt.
+              </li>
+              <li>Double click and hold → this sandbox.</li>
+              <li>
+                Afterthoughts go to{" "}
+                <span className="pair-emph">Granola Thoughts</span>, prep to{" "}
+                <span className="pair-emph">Granola Catch Up</span>, owe to{" "}
+                <span className="pair-emph">Granola To-Dos</span>.
+              </li>
+            </ol>
+            <CopyField
+              label="MCP URL"
+              value={status.mcpUrl}
+              copied={copied === "url"}
+              onCopy={() => void copy("url", status.mcpUrl)}
+            />
+            <CopyField
+              label="Authorization"
+              value={status.pebbleToken ? `Bearer ${status.pebbleToken}` : ""}
+              copied={copied === "token"}
+              onCopy={() =>
+                void copy("token", `Bearer ${status.pebbleToken}`)
+              }
+            />
+            {status.connected ? (
+              <button
+                type="button"
+                className="text-link pair-hide"
+                onClick={() => setShowPair(false)}
+              >
+                Hide setup
+              </button>
+            ) : null}
+          </aside>
+        ) : null}
       </div>
     </div>
   );

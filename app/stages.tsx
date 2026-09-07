@@ -24,21 +24,26 @@ export function ArchiveStage({
   mode,
   items,
   connected,
+  onDelete,
 }: {
   mode: Mode;
   items: CaptureView[];
   connected: boolean;
+  onDelete: (id: string) => void;
 }) {
   if (!items.length) {
-    return (
-      <EmptyArchive mode={mode} connected={connected} />
-    );
+    return <EmptyArchive mode={mode} connected={connected} />;
   }
 
   return (
     <div className="archive-stack">
       {items.map((item) => (
-        <ArchiveCard key={item.id} mode={mode} item={item} />
+        <ArchiveCard
+          key={item.id}
+          mode={mode}
+          item={item}
+          onDelete={() => onDelete(item.id)}
+        />
       ))}
     </div>
   );
@@ -53,42 +58,62 @@ function EmptyArchive({
 }) {
   const copy =
     mode === "afterthought"
-      ? "Afterthoughts from the ring land here. The Granola summary stays underneath your new line."
-      : mode === "prep"
-        ? "Prep briefs from the ring land here. Newest on top."
-        : "Open items from the ring land here. Newest on top.";
+      ? connected
+        ? "Nothing in this thread yet."
+        : "Connect Granola, then use the ring."
+      : "Nothing in this thread yet.";
 
   return (
     <div className="archive-empty">
       <p>{copy}</p>
-      <p className="archive-empty-sub">
-        {connected
-          ? "This page is read-only. Double-click and hold the ring to add the next one."
-          : "Connect Granola, then pair the ring. This page will not ask you to type."}
-      </p>
     </div>
   );
 }
 
-function ArchiveCard({ mode, item }: { mode: Mode; item: CaptureView }) {
+function ArchiveCard({
+  mode,
+  item,
+  onDelete,
+}: {
+  mode: Mode;
+  item: CaptureView;
+  onDelete: () => void;
+}) {
   if (mode === "afterthought") {
-    return <AfterthoughtCard item={item} />;
+    return <AfterthoughtCard item={item} onDelete={onDelete} />;
   }
   if (mode === "prep") {
-    return <PrepCard item={item} />;
+    return <PrepCard item={item} onDelete={onDelete} />;
   }
-  return <OweCard item={item} />;
+  return <OweCard item={item} onDelete={onDelete} />;
 }
 
-function AfterthoughtCard({ item }: { item: CaptureView }) {
+function Remove({ onDelete }: { onDelete: () => void }) {
+  return (
+    <button type="button" className="card-remove" onClick={onDelete} aria-label="Remove">
+      Remove
+    </button>
+  );
+}
+
+function AfterthoughtCard({
+  item,
+  onDelete,
+}: {
+  item: CaptureView;
+  onDelete: () => void;
+}) {
   return (
     <article className="note note-readonly">
       <span className="note-spine" aria-hidden />
       <header className="note-head">
         <p className="note-meeting font-serif-italic">{item.title}</p>
-        <time className="note-when" dateTime={item.created_at}>
-          {item.when ?? formatWhen(item.created_at)}
-        </time>
+        <div className="card-meta">
+          <time className="note-when" dateTime={item.created_at}>
+            {item.when ?? formatWhen(item.created_at)}
+          </time>
+          <Remove onDelete={onDelete} />
+        </div>
       </header>
       {item.missed ? (
         <p className="note-miss">{item.output}</p>
@@ -108,16 +133,25 @@ function AfterthoughtCard({ item }: { item: CaptureView }) {
   );
 }
 
-function PrepCard({ item }: { item: CaptureView }) {
+function PrepCard({
+  item,
+  onDelete,
+}: {
+  item: CaptureView;
+  onDelete: () => void;
+}) {
   const lines = item.missed ? [] : item.bullets;
 
   return (
     <article className="lock lock-readonly">
       <header className="lock-head">
         <p className="lock-app">Index</p>
-        <time className="lock-when" dateTime={item.created_at}>
-          {formatWhen(item.created_at)}
-        </time>
+        <div className="card-meta">
+          <time className="lock-when" dateTime={item.created_at}>
+            {formatWhen(item.created_at)}
+          </time>
+          <Remove onDelete={onDelete} />
+        </div>
       </header>
       <p className="lock-kicker">For</p>
       <p className="lock-who-read font-serif">{item.title}</p>
@@ -132,29 +166,32 @@ function PrepCard({ item }: { item: CaptureView }) {
   );
 }
 
-function OweCard({ item }: { item: CaptureView }) {
+function OweCard({
+  item,
+  onDelete,
+}: {
+  item: CaptureView;
+  onDelete: () => void;
+}) {
   const you = item.you.slice(0, 4);
   const them = item.them.slice(0, 4);
   const fallback =
-    !you.length && !them.length
-      ? item.bullets.slice(0, 4)
-      : [];
+    !you.length && !them.length ? item.bullets.slice(0, 4) : [];
 
   return (
     <article className="tool-owe tool-owe-readonly">
       <header className="owe-head owe-head-read">
         <p className="owe-title font-serif">{item.title}</p>
-        <time dateTime={item.created_at}>{formatWhen(item.created_at)}</time>
+        <div className="card-meta">
+          <time dateTime={item.created_at}>{formatWhen(item.created_at)}</time>
+          <Remove onDelete={onDelete} />
+        </div>
       </header>
       {item.missed ? (
         <p className="note-miss">{item.output}</p>
       ) : (
         <div className="ledger">
-          <Lane
-            label="You"
-            tone="you"
-            items={you.length ? you : fallback}
-          />
+          <Lane label="You" tone="you" items={you.length ? you : fallback} />
           <Lane label="Them" tone="them" items={them} />
         </div>
       )}
@@ -182,12 +219,7 @@ function Lane({
       ) : (
         <ul className="lane-sheet">
           {items.map((entry, index) => (
-            <li
-              key={`${entry}-${index}`}
-              style={{ animationDelay: `${index * 55}ms` }}
-            >
-              {entry.replace(/^[-•*]\s*/, "")}
-            </li>
+            <li key={`${entry}-${index}`}>{entry.replace(/^[-•*]\s*/, "")}</li>
           ))}
         </ul>
       )}

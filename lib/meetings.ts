@@ -12,6 +12,7 @@ export {
   excerptMeetingNotes,
   meetingsFromUnknown,
   meetingSummary,
+  summaryFromMarkup,
 } from "./meeting-parse";
 
 export async function listRecentMeetings(): Promise<MeetingHit[]> {

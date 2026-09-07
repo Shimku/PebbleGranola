@@ -101,3 +101,27 @@ test("viewFromCapture strips XML from old afterthoughts", () => {
   assert.equal(view.thread, "VERV");
   assert.doesNotMatch(view.title, /captured by me/);
 });
+
+test("afterthought summary is pulled from stored Granola XML", () => {
+  const view = viewFromCapture(
+    cap({
+      id: "s",
+      kind: "afterthought",
+      title: xml,
+      input: "I should have scheduled a call with them.",
+      source: {
+        details: {
+          content: [
+            {
+              type: "text",
+              text: `<meetings_data><meeting title="VERV"><summary># Next Steps\n- **Set up CBRE intro call**</summary></meeting></meetings_data>`,
+            },
+          ],
+        },
+      },
+    }),
+  );
+  assert.match(view.thought, /scheduled a call/);
+  assert.match(view.summary, /Set up CBRE intro call/);
+  assert.doesNotMatch(view.summary, /<summary/);
+});
