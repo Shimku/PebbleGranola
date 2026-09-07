@@ -13,12 +13,13 @@ function mcpHeaders() {
 }
 
 export async function GET() {
-  return new Response(
-    JSON.stringify({
-      error: "This MCP server expects Streamable HTTP POST from the Pebble app.",
-    }),
-    { status: 405, headers: mcpHeaders() },
-  );
+  return new Response(null, {
+    status: 405,
+    headers: {
+      Allow: "POST",
+      "Cache-Control": "no-store",
+    },
+  });
 }
 
 export async function POST(request: Request) {

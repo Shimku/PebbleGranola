@@ -1,14 +1,40 @@
 const RING_MAX = 380;
 
-export function clipForRing(text: string, max = RING_MAX): string {
-  const cleaned = text
+const REASONING_LINE =
+  /^(let me|the user asked|i'll |i will now|i should |searching |looking at |i need to |based on the most recent|let me now|i'm going to|focus on meetings|i'll read|let me read|let me focus|let me compile)/i;
+
+export function granolaAnswer(text: string): string {
+  if (!text.trim()) return "";
+
+  const stripped = text
+    .replace(/\u2014/g, " - ")
+    .replace(/\*\*/g, "")
+    .replace(/^#{1,6}\s+/gm, "")
     .replace(/\[\[(\d+)\]\]\((https?:[^)]+)\)/g, "[$1]")
     .replace(/\[(\d+)\]\((https?:[^)]+)\)/g, "[$1]")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  const marker = stripped.search(
+    /here(?:'|’)?s what|open (?:items|loops)|idea added|^mine\b|^theirs\b/im,
+  );
+  const focused = marker >= 0 ? stripped.slice(marker) : stripped;
+  const blocks = focused
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+  const kept = blocks.filter((block) => !REASONING_LINE.test(block));
+  const body = (kept.length ? kept : blocks).join("\n").trim();
+  return body;
+}
+
+export function clipForRing(text: string, max = RING_MAX): string {
+  const cleaned = granolaAnswer(text)
     .replace(/[^\S\n]+/g, " ")
     .trim();
 
+  if (!cleaned) return "";
   if (cleaned.length <= max) return cleaned;
 
   const cut = cleaned.slice(0, max);
@@ -17,6 +43,7 @@ export function clipForRing(text: string, max = RING_MAX): string {
     cut.lastIndexOf("! "),
     cut.lastIndexOf("? "),
     cut.lastIndexOf(".\n"),
+    cut.lastIndexOf("\n"),
   );
   const clipped = (lastStop > 90 ? cut.slice(0, lastStop + 1) : cut).trim();
   return clipped.endsWith(".") || clipped.endsWith("!") || clipped.endsWith("?")
