@@ -23,12 +23,17 @@ function fromHint(hint: string | null | undefined): string {
   return firstWords(cleanMeetingTitle(trimmed) || trimmed, 2);
 }
 
+function usable(value: string): string {
+  if (!value || SKIP_HINTS.has(value.toLowerCase())) return "";
+  return value;
+}
+
 export function threadLabel(input: {
   title?: string | null;
   hint?: string | null;
   spoken?: string | null;
 }): string {
-  const cleaned = cleanMeetingTitle(input.title);
+  const cleaned = usable(cleanMeetingTitle(input.title));
   if (cleaned) {
     const { left, right } = pairSides(cleaned);
     if (left) {
@@ -37,11 +42,41 @@ export function threadLabel(input: {
       }
       return left;
     }
-    return firstWords(cleaned, 3);
+    const words = firstWords(cleaned, 3);
+    if (usable(words)) return words;
   }
   return fromHint(input.hint) || fromHint(input.spoken) || UNFILED;
 }
 
+function stem(label: string): string {
+  return label.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+export function sameThread(a: string, b: string): boolean {
+  if (a === UNFILED || b === UNFILED) return a === b;
+  const x = stem(a);
+  const y = stem(b);
+  if (!x || !y) return false;
+  if (x === y) return true;
+  return (
+    x.length >= 3 && y.length >= 3 && (x.startsWith(y) || y.startsWith(x))
+  );
+}
+
+export function preferThreadLabel(current: string, incoming: string): string {
+  if (current === UNFILED) return incoming;
+  if (incoming === UNFILED) return current;
+  const score = (value: string) => {
+    let n = 0;
+    if (/^[A-Z][A-Z0-9]{1,7}$/.test(value)) n += 4;
+    if (/^[A-Z][a-z]+$/.test(value)) n += 2;
+    if (value === value.toLowerCase()) n -= 1;
+    n -= value.length / 50;
+    return n;
+  };
+  return score(incoming) > score(current) ? incoming : current;
+}
+
 export function threadKey(label: string): string {
-  return label.trim().toLowerCase().replace(/\s+/g, " ");
+  return stem(label) || UNFILED.toLowerCase();
 }

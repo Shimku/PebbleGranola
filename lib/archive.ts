@@ -1,7 +1,13 @@
 import { bulletLines } from "./bullets.ts";
 import { splitLedger } from "./ledger.ts";
 import { cleanMeetingDate, cleanMeetingTitle, shortDate } from "./title.ts";
-import { threadKey, threadLabel, UNFILED } from "./thread.ts";
+import {
+  preferThreadLabel,
+  sameThread,
+  threadKey,
+  threadLabel,
+  UNFILED,
+} from "./thread.ts";
 
 export type CaptureKind = "afterthought" | "prep" | "todos";
 
@@ -97,18 +103,17 @@ export function viewFromCapture(capture: ArchiveCapture): CaptureView {
 }
 
 export function threadsFromCaptures(captures: ArchiveCapture[]): ArchiveThread[] {
-  const map = new Map<string, ArchiveThread>();
+  const list: ArchiveThread[] = [];
   for (const capture of captures) {
     const label = threadLabel({
       title: capture.title,
       hint: capture.hint,
       spoken: capture.input,
     });
-    const key = threadKey(label);
-    const existing = map.get(key);
+    const existing = list.find((thread) => sameThread(thread.label, label));
     if (!existing) {
-      map.set(key, {
-        key,
+      list.push({
+        key: threadKey(label),
         label,
         count: 1,
         latestAt: capture.created_at,
@@ -116,12 +121,13 @@ export function threadsFromCaptures(captures: ArchiveCapture[]): ArchiveThread[]
       continue;
     }
     existing.count += 1;
+    existing.label = preferThreadLabel(existing.label, label);
+    existing.key = threadKey(existing.label);
     if (capture.created_at > existing.latestAt) {
       existing.latestAt = capture.created_at;
-      existing.label = label;
     }
   }
-  return [...map.values()].sort((a, b) =>
+  return list.sort((a, b) =>
     a.latestAt < b.latestAt ? 1 : a.latestAt > b.latestAt ? -1 : 0,
   );
 }
@@ -131,6 +137,8 @@ export function capturesInThread(
   key: string,
   kind?: CaptureKind,
 ): CaptureView[] {
+  const thread = threadsFromCaptures(captures).find((item) => item.key === key);
+  if (!thread) return [];
   return captures
     .filter((capture) => {
       if (kind && capture.kind !== kind) return false;
@@ -139,7 +147,7 @@ export function capturesInThread(
         hint: capture.hint,
         spoken: capture.input,
       });
-      return threadKey(label) === key;
+      return sameThread(label, thread.label);
     })
     .map(viewFromCapture);
 }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { threadLabel, UNFILED } from "./thread.ts";
+import { threadLabel, UNFILED, sameThread, preferThreadLabel } from "./thread.ts";
 
 test("VERV<>ASA threads as VERV", () => {
   assert.equal(
@@ -24,6 +24,16 @@ test("this week does not become a thread name", () => {
     threadLabel({ title: null, hint: "this week", spoken: "this week" }),
     UNFILED,
   );
+  assert.equal(
+    threadLabel({ title: "this week", hint: "this week", spoken: "this week" }),
+    UNFILED,
+  );
+});
+
+test("Verve and VERV are the same thread", () => {
+  assert.equal(sameThread("VERV", "verve"), true);
+  assert.equal(sameThread("VERV", "Bonbon"), false);
+  assert.equal(preferThreadLabel("verve", "VERV"), "VERV");
 });
 
 test("Sorta pitches keep the person", () => {

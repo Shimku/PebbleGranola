@@ -109,14 +109,7 @@ function AfterthoughtCard({ item }: { item: CaptureView }) {
 }
 
 function PrepCard({ item }: { item: CaptureView }) {
-  const lines = item.missed
-    ? []
-    : item.bullets.length
-      ? item.bullets
-      : item.output
-          .split("\n")
-          .map((line) => line.replace(/^[-•*]\s*/, "").trim())
-          .filter((line) => line && !/^prep\b/i.test(line));
+  const lines = item.missed ? [] : item.bullets;
 
   return (
     <article className="lock lock-readonly">

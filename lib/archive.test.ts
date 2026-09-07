@@ -50,16 +50,38 @@ test("a later Verve ask does not replace the earlier one", () => {
       },
       created_at: "2026-09-07T12:30:00.000Z",
     }),
+    cap({
+      id: "3",
+      kind: "prep",
+      title: "Verve",
+      hint: "verve",
+      input: "verve",
+      output: "PREP\n• UK site list still open",
+      created_at: "2026-09-07T13:05:00.000Z",
+    }),
+    cap({
+      id: "4",
+      kind: "todos",
+      title: "this week",
+      hint: "this week",
+      input: "this week",
+      output: "OPEN ITEMS\n• Something else",
+      created_at: "2026-09-07T14:00:00.000Z",
+    }),
   ];
 
   const threads = threadsFromCaptures(captures);
-  assert.equal(threads[0]?.label, "VERV");
-  assert.equal(threads[0]?.count, 2);
+  assert.equal(threads.length, 2);
+  assert.equal(threads[1]?.label, "VERV");
+  assert.equal(threads[1]?.count, 3);
+  assert.equal(threads[0]?.label, "Unfiled");
 
-  const after = capturesInThread(captures, threads[0]!.key, "afterthought");
-  const owe = capturesInThread(captures, threads[0]!.key, "todos");
+  const after = capturesInThread(captures, threads[1]!.key, "afterthought");
+  const owe = capturesInThread(captures, threads[1]!.key, "todos");
+  const prep = capturesInThread(captures, threads[1]!.key, "prep");
   assert.equal(after.length, 1);
   assert.equal(owe.length, 1);
+  assert.equal(prep.length, 1);
   assert.match(after[0]?.thought ?? "", /scheduled a call/);
   assert.match(after[0]?.summary ?? "", /Q1 pilot/);
   assert.doesNotMatch(after[0]?.title ?? "", /<meeting/);
