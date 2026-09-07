@@ -93,9 +93,41 @@ test("typed verv still matches VERV", () => {
   assert.equal(picked[0]?.id, "v");
 });
 
+const brad = hit("br", "Brad<>FI Catch-up 07.09.26", "2026-09-07T14:01:00Z");
+const interfaces = hit("if", "Interfaces Feedback", "2026-09-03T17:17:00Z");
+const bonvanAsa = hit("ba", "Bonvan<>ASA | 20m in Barcelona", "2026-09-04T08:32:00Z");
+
+test("spoken Brad matches Brad<>FI Catch-up", () => {
+  const picked = pickMeetings([brad, amazon, random], "Brad", "last");
+  assert.equal(picked[0]?.id, "br");
+});
+
+test("what they owe from the meeting with Brad still finds Brad", () => {
+  const picked = pickMeetings(
+    [brad, amazon, random],
+    "What they owe from the meeting with Brad?",
+    "last",
+  );
+  assert.equal(picked[0]?.id, "br");
+});
+
+test("prepped me for interfaces matches Interfaces Feedback", () => {
+  const picked = pickMeetings(
+    [interfaces, amazon, random],
+    "Prepped me for the next meeting with interfaces.",
+    "last",
+  );
+  assert.equal(picked[0]?.id, "if");
+});
+
 test("Bonbon fuzzy-matches a Bonvan title", () => {
   const picked = pickMeetings([bonvan, amazon, random], "Bonbon", "last");
   assert.equal(picked[0]?.id, "b");
+});
+
+test("Bonbon fuzzy-matches Bonvan<>ASA", () => {
+  const picked = pickMeetings([bonvanAsa, amazon, random], "Bonbon", "last");
+  assert.equal(picked[0]?.id, "ba");
 });
 
 test("an unknown company does not fall back to a random meeting", () => {

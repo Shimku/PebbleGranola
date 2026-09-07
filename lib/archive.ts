@@ -1,7 +1,7 @@
 import { bulletLines } from "./bullets.ts";
 import { splitLedger } from "./ledger.ts";
 import { meetingSummary } from "./meeting-parse.ts";
-import { granolaAnswer } from "./text.ts";
+import { granolaAnswer, isPromptEcho } from "./text.ts";
 import { cleanMeetingDate, cleanMeetingTitle, shortDate } from "./title.ts";
 import {
   preferThreadLabel,
@@ -109,13 +109,20 @@ export function viewFromCapture(capture: ArchiveCapture): CaptureView {
     (capture.kind === "afterthought" ? capture.input.trim() : "");
   const summary = summaryFromSource(source, capture.kind);
   const missed = source.missed === true;
-  const bullets = bulletLines(capture.output, 4);
-  const ledger = splitLedger(
+  let bullets = bulletLines(capture.output, 4);
+  if (bullets.length < 2 && summary) {
+    const fromNotes = bulletLines(summary, 4);
+    if (fromNotes.length) bullets = fromNotes;
+  }
+  const ledgerSource =
     capture.output
       .split("\n")
       .map((line) => line.trim())
-      .filter(Boolean),
-  );
+      .filter((line) => line && !isPromptEcho(line));
+  let ledger = splitLedger(ledgerSource);
+  if (!ledger.you.length && !ledger.them.length && bullets.length) {
+    ledger = splitLedger(bullets);
+  }
 
   return {
     id: capture.id,

@@ -34,6 +34,15 @@ test("chain of thought does not become an open item", () => {
   assert.deepEqual(them, []);
 });
 
+test("open loops prompt echo does not become a ledger row", () => {
+  const { you, them } = splitLedger([
+    "open loops, and names in four short bullets.",
+    "Set up CBRE intro call",
+  ]);
+  assert.deepEqual(you, ["Set up CBRE intro call"]);
+  assert.deepEqual(them, []);
+});
+
 test("deskFromCaptures uses the newest of each kind", () => {
   const desk = deskFromCaptures([
     {

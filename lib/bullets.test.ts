@@ -17,14 +17,26 @@ Also write an essay about the partnership vision and the long-term roadmap which
   assert.doesNotMatch(lines.join("\n"), /user asked/i);
 });
 
-test("drops prompt echoes like open loops, or names without guessing", () => {
+test("drops the Interfaces prep echo and keeps real notes", () => {
   const text = ringBullets(
-    "open loops, or names without guessing.",
+    "open loops, and names in four short bullets.",
     "PREP",
-    "• UK site list still open\n• CBRE intro this week",
+    "• Share the Q1 site list\n• Set up the CBRE intro",
   );
-  assert.doesNotMatch(text, /names without guessing/);
-  assert.match(text, /UK site list/);
+  assert.doesNotMatch(text, /open loops/i);
+  assert.doesNotMatch(text, /four short bullets/i);
+  assert.match(text, /Q1 site list/);
+});
+
+test("turns a Granola summary into short prep bullets", () => {
+  const lines = bulletLines(`# Next Steps
+
+- Set up CBRE intro call for Thursday or Friday next week
+- Share Q1 site list with Verve for selection
+- Confirm London pilot dates in October`);
+  assert.equal(lines.length, 3);
+  assert.match(lines[0] ?? "", /CBRE/);
+  assert.doesNotMatch(lines.join("\n"), /Next Steps/);
 });
 
 test("caps at four bullets", () => {

@@ -3,6 +3,40 @@ const RING_MAX = 380;
 const REASONING_LINE =
   /^(let me|the user asked|i'll |i will now|i should |searching |looking at |i need to |based on the most recent|let me now|i'm going to|focus on meetings|i'll read|let me read|let me focus|let me compile)/i;
 
+export function isPromptEcho(line: string): boolean {
+  const t = line
+    .toLowerCase()
+    .replace(/[“”"']/g, "")
+    .replace(/[.,:;!?]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!t) return false;
+  if (/four short bullets/.test(t)) return true;
+  if (/names in four/.test(t)) return true;
+  if (/open loops/.test(t) && /names/.test(t) && t.length < 90) return true;
+  if (/last decision/.test(t) && /open loops/.test(t)) return true;
+  if (/without guessing/.test(t)) return true;
+  if (/names i will forget/.test(t)) return true;
+  if (/what not to reopen/.test(t)) return true;
+  if (/no markdown/.test(t) || /no chain of thought/.test(t) || /no preamble/.test(t)) {
+    return true;
+  }
+  if (/be specific to my notes/.test(t)) return true;
+  if (/^prep me in \d/.test(t)) return true;
+  if (/^what do i still owe/.test(t)) return true;
+  if (/max \d+ bullets/.test(t) || /cover:/.test(t)) return true;
+  return false;
+}
+
+function dropEchoLines(text: string): string {
+  return text
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter((line) => line && !isPromptEcho(line) && !REASONING_LINE.test(line))
+    .join("\n")
+    .trim();
+}
+
 export function granolaAnswer(text: string): string {
   if (!text.trim()) return "";
 
@@ -17,16 +51,16 @@ export function granolaAnswer(text: string): string {
     .trim();
 
   const marker = stripped.search(
-    /here(?:'|’)?s what|open (?:items|loops)|idea added|^mine\b|^theirs\b/im,
+    /here(?:'|’)?s what|open items?\b|idea added|^mine\b|^theirs\b/im,
   );
   const focused = marker >= 0 ? stripped.slice(marker) : stripped;
   const blocks = focused
     .split(/\n{2,}/)
-    .map((block) => block.trim())
+    .map((block) => dropEchoLines(block))
     .filter(Boolean);
   const kept = blocks.filter((block) => !REASONING_LINE.test(block));
   const body = (kept.length ? kept : blocks).join("\n").trim();
-  return body;
+  return isPromptEcho(body) ? "" : body;
 }
 
 export function clipForRing(text: string, max = RING_MAX): string {
