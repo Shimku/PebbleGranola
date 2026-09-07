@@ -168,7 +168,7 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
         </div>
       ) : null}
 
-      {status.claimUrl ? (
+      {status.claimUrl && !status.connected ? (
         <p className="banner banner-mute">
           This demo database lasts 72 hours unless you{" "}
           <a href={status.claimUrl}>claim it in Neon</a>.

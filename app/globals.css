@@ -850,17 +850,10 @@ code {
 }
 
 .lane-sheet {
-  --lane-row: 2rem;
-  min-height: calc(var(--lane-row) * 3);
+  min-height: 0;
   margin: 0;
   padding: 0;
-  background-image: linear-gradient(
-    to bottom,
-    transparent calc(var(--lane-row) - 1px),
-    var(--line) calc(var(--lane-row) - 1px)
-  );
-  background-size: 100% var(--lane-row);
-  background-repeat: repeat-y;
+  background-image: none;
 }
 
 .lane-you .lane-sheet {
@@ -878,11 +871,26 @@ code {
 .lane li {
   display: block;
   margin: 0;
-  padding: 0 0.55rem 0 0.15rem;
-  min-height: var(--lane-row);
+  padding: 0.5rem 0.45rem 0.5rem 0.2rem;
+  border-bottom: 1px solid var(--line);
   font-size: 0.9rem;
-  line-height: var(--lane-row);
+  line-height: 1.4;
   color: var(--ink-2);
+}
+
+.lane li:last-child {
+  border-bottom: 0;
+}
+
+div.lane-sheet {
+  min-height: 6.6rem;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 2.15rem,
+    var(--line) 2.15rem,
+    var(--line) 2.2rem
+  );
 }
 
 .index-run {
