@@ -892,9 +892,20 @@ code {
 }
 
 .note-row {
+  display: block;
+  width: 100%;
   padding: 1rem 1.05rem 1.05rem;
+  text-align: left;
   content-visibility: auto;
   contain-intrinsic-size: 1px 140px;
+}
+
+.note-row:hover {
+  background: color-mix(in srgb, var(--sprout) 28%, transparent);
+}
+
+.note-row.is-on {
+  box-shadow: inset 3px 0 0 var(--olive);
 }
 
 .note-row + .note-row {

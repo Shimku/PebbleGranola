@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import {
+  deskFromCaptures,
+  draftFromCapture,
+  resultFromCapture,
+  type DeskCapture,
+} from "@/lib/desk";
 import { RingMark } from "./mark";
 import {
   MODES,
@@ -45,24 +51,53 @@ const EMPTY_RESULTS: Record<Mode, ToolResult | null> = {
   todos: null,
 };
 
+const EMPTY_DIRTY: Record<Mode, boolean> = {
+  afterthought: false,
+  prep: false,
+  todos: false,
+};
+
+function seedDesk(captures: Capture[]) {
+  const seeded = deskFromCaptures(captures as DeskCapture[]);
+  return {
+    drafts: { ...EMPTY_DRAFTS, ...seeded.drafts },
+    results: { ...EMPTY_RESULTS, ...seeded.results } as Record<
+      Mode,
+      ToolResult | null
+    >,
+  };
+}
+
 export function Dashboard({ initial }: { initial: StatusPayload }) {
   const [status, setStatus] = useState(initial);
   const [mode, setMode] = useState<Mode>("afterthought");
-  const [drafts, setDrafts] = useState(EMPTY_DRAFTS);
-  const [results, setResults] = useState(EMPTY_RESULTS);
+  const [drafts, setDrafts] = useState(
+    () => seedDesk(initial.captures ?? []).drafts,
+  );
+  const [results, setResults] = useState(
+    () => seedDesk(initial.captures ?? []).results,
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(initial.error ?? null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const dirty = useRef({ ...EMPTY_DIRTY });
 
   const utterance = drafts[mode];
   const result = results[mode];
 
   function setUtterance(value: string) {
+    dirty.current[mode] = true;
     setDrafts((prev) => ({ ...prev, [mode]: value }));
   }
 
   useEffect(() => {
     void refreshStatus();
+    const tick = window.setInterval(() => {
+      if (document.visibilityState === "hidden") return;
+      void refreshStatus();
+    }, 4000);
+    return () => window.clearInterval(tick);
   }, []);
 
   useEffect(() => {
@@ -74,12 +109,44 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
   async function refreshStatus() {
     const response = await fetch("/api/status", { cache: "no-store" });
     const json = (await response.json()) as StatusPayload;
+    const captures = json.captures ?? [];
     setStatus((prev) => ({
       ...prev,
       ...json,
-      captures: json.captures ?? prev.captures,
+      captures,
     }));
+    const incoming = deskFromCaptures(captures as DeskCapture[]);
+    setDrafts((prev) => {
+      const next = { ...prev };
+      for (const kind of MODES) {
+        if (dirty.current[kind.id]) continue;
+        next[kind.id] = incoming.drafts[kind.id];
+      }
+      return next;
+    });
+    setResults((prev) => {
+      const next = { ...prev };
+      for (const kind of MODES) {
+        if (dirty.current[kind.id]) continue;
+        next[kind.id] = incoming.results[kind.id];
+      }
+      return next;
+    });
     if (json.error) setError(json.error);
+  }
+
+  function openCapture(capture: Capture) {
+    dirty.current[capture.kind] = true;
+    setMode(capture.kind);
+    setActiveId(capture.id);
+    setDrafts((prev) => ({
+      ...prev,
+      [capture.kind]: draftFromCapture(capture as DeskCapture),
+    }));
+    setResults((prev) => ({
+      ...prev,
+      [capture.kind]: resultFromCapture(capture as DeskCapture),
+    }));
   }
 
   async function copy(label: string, value: string) {
@@ -98,13 +165,20 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
         /pitch/i.test(spoken) ||
         /visual canvas/i.test(spoken) ||
         /\bsorta\b/i.test(spoken);
+      const wantsWeek = /\b(this week|all meetings)\b/i.test(spoken);
       const args =
         tool === "afterthought"
           ? { thought: spoken }
           : {
               who_or_topic: spoken,
               scope:
-                tool === "prep" ? (wantsPitch ? "pitch" : "last") : "recent",
+                tool === "prep"
+                  ? wantsPitch
+                    ? "pitch"
+                    : "last"
+                  : wantsWeek
+                    ? "recent"
+                    : "last",
             };
 
       const response = await fetch("/api/try", {
@@ -304,7 +378,12 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
         ) : (
           <div className="notes-list">
             {(status.captures ?? []).map((capture) => (
-              <article key={capture.id} className="note-row">
+              <button
+                type="button"
+                key={capture.id}
+                className={`note-row ${activeId === capture.id ? "is-on" : ""}`}
+                onClick={() => openCapture(capture)}
+              >
                 <div className="note-row-meta">
                   <span
                     className={`kind-dot kind-${capture.kind}`}
@@ -323,7 +402,7 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
                 </div>
                 <p className="note-row-out">{capture.output}</p>
                 <p className="note-row-in">{capture.input}</p>
-              </article>
+              </button>
             ))}
           </div>
         )}
