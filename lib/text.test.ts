@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { clipForRing, granolaAnswer, isPromptEcho } from "./text.ts";
+import { clipForRing, granolaAnswer, isPromptEcho, isUnusableAnswer } from "./text.ts";
 
 const ramble = `The user asked specifically about **this week** (Mon Sep 7, 2026). Let me focus on meetings from this week - but since the current date is Sep 7 and the most recent meetings are from Sep 4, I'll read the most recent meetings.
 
@@ -35,4 +35,12 @@ test("isPromptEcho catches the four-bullet instruction fragment", () => {
     true,
   );
   assert.equal(isPromptEcho("Set up CBRE intro call for Thursday"), false);
+});
+
+test("isUnusableAnswer catches Index saying notes are not here", () => {
+  assert.equal(
+    isUnusableAnswer("I don’t have the notes for that conversation available here."),
+    true,
+  );
+  assert.equal(isUnusableAnswer("Friday catch-up to clear open action items"), false);
 });

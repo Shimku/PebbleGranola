@@ -13,6 +13,7 @@ export {
   meetingsFromUnknown,
   meetingSummary,
   noteBrief,
+  summariesByMeetingId,
   summaryFromMarkup,
 } from "./meeting-parse";
 

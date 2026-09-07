@@ -1,7 +1,7 @@
 import { bulletLines } from "./bullets.ts";
 import { splitLedger } from "./ledger.ts";
 import { meetingSummary } from "./meeting-parse.ts";
-import { granolaAnswer, isPromptEcho } from "./text.ts";
+import { granolaAnswer, isUnusableAnswer } from "./text.ts";
 import { cleanMeetingDate, cleanMeetingTitle, shortDate } from "./title.ts";
 import {
   preferThreadLabel,
@@ -109,18 +109,19 @@ export function viewFromCapture(capture: ArchiveCapture): CaptureView {
     (capture.kind === "afterthought" ? capture.input.trim() : "");
   const summary = summaryFromSource(source, capture.kind);
   const missed = source.missed === true;
-  let bullets = bulletLines(capture.output, 4);
+  const outputBullets = bulletLines(capture.output, 4);
+  let bullets = outputBullets;
   if (bullets.length < 2 && summary) {
     const fromNotes = bulletLines(summary, 4);
     if (fromNotes.length) bullets = fromNotes;
   }
-  const ledgerSource =
-    capture.output
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line && !isPromptEcho(line));
+  const recovered = bullets !== outputBullets;
+  const ledgerSource = capture.output
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line && !isUnusableAnswer(line));
   let ledger = splitLedger(ledgerSource);
-  if (!ledger.you.length && !ledger.them.length && bullets.length) {
+  if (recovered || (!ledger.you.length && !ledger.them.length && bullets.length)) {
     ledger = splitLedger(bullets);
   }
 

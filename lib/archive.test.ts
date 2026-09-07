@@ -144,3 +144,40 @@ test("prep cards recover notes when the stored output is a prompt echo", () => {
   assert.doesNotMatch(view.bullets.join("\n"), /four short bullets/i);
   assert.match(view.bullets.join("\n"), /CBRE/);
 });
+
+test("Brad owe cards drop the notes-unavailable bluff once a summary exists", () => {
+  const view = viewFromCapture(
+    cap({
+      id: "brad",
+      kind: "todos",
+      title: "Brad<>FI Catch-up 07.09.26",
+      hint: "Brad",
+      input: "Brad",
+      output: "OPEN ITEMS\n• I don’t have the notes for that conversation available here.",
+      source: {
+        summary:
+          "Friday catch-up to clear open action items\nLoop Amazon SMEs in while Brad is on vacation",
+      },
+    }),
+  );
+  assert.doesNotMatch(view.bullets.join("\n"), /don.t have the notes/i);
+  assert.match(view.bullets.join("\n"), /Friday catch-up/);
+});
+
+test("a Last note fallback is replaced by the hydrated summary", () => {
+  const view = viewFromCapture(
+    cap({
+      id: "brad2",
+      kind: "todos",
+      title: "Brad<>FI Catch-up 07.09.26",
+      hint: "Brad",
+      output: "OPEN ITEMS\n• Last note: Brad<>FI Catch up 07.09.26.",
+      source: {
+        summary:
+          "Friday catch-up to clear open action items\nLoop Amazon SMEs in while Brad is on vacation",
+      },
+    }),
+  );
+  assert.doesNotMatch(view.you.join("\n"), /Last note/);
+  assert.match(view.you.join("\n"), /Friday catch-up/);
+});

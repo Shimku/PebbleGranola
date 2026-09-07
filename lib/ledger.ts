@@ -1,4 +1,4 @@
-import { isPromptEcho } from "./text.ts";
+import { isUnusableAnswer } from "./text.ts";
 
 export type LedgerLane = "you" | "them";
 
@@ -20,7 +20,7 @@ function leftover(line: string, header: RegExp): string {
 function keep(line: string): boolean {
   if (line.length < 3) return false;
   if (SKIP_LINE.test(line)) return false;
-  if (isPromptEcho(line)) return false;
+  if (isUnusableAnswer(line)) return false;
   if (/no meeting notes are available/i.test(line)) return false;
   return true;
 }
