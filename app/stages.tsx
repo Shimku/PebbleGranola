@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, type KeyboardEvent } from "react";
+import { CopyBit } from "./copy";
 
 export type Mode = "afterthought" | "prep" | "todos";
 
@@ -152,16 +153,18 @@ function AfterthoughtView({
         <footer className="note-foot">
           {busy || lines.length > 0 ? (
             <aside className="ink-chip">
-              <p className="ink-app">Index</p>
+              <div className="ink-chip-bar">
+                <p className="ink-app">Index</p>
+                {busy ? null : <CopyBit text={lines.join("\n")} tone="ink" />}
+              </div>
               {busy ? (
                 <span className="ink-meter" aria-hidden />
               ) : (
                 <p className="ink-copy">{lines.join(" ")}</p>
               )}
             </aside>
-          ) : (
-            <span />
-          )}
+          ) : null}
+          <CopyBit text={thought} />
           <IndexRun busy={busy} disabled={!canRun} onRun={onRun} />
         </footer>
       </article>
@@ -205,7 +208,11 @@ function PrepView({
       <article className="lock" onClick={() => whoRef.current?.focus()}>
         <header className="lock-head">
           <p className="lock-app">Index</p>
-          {busy ? <span className="ink-meter lock-head-meter" aria-hidden /> : null}
+          {busy ? (
+            <span className="ink-meter lock-head-meter" aria-hidden />
+          ) : (
+            <CopyBit text={lines.join("\n")} tone="ink" />
+          )}
         </header>
         <label className="lock-kicker" htmlFor="field-prep">
           For
@@ -287,8 +294,11 @@ function Lane({
   return (
     <section className={`lane lane-${tone}`}>
       <h3>
-        <span className="lane-dot" aria-hidden />
-        {label}
+        <span className="lane-label">
+          <span className="lane-dot" aria-hidden />
+          {label}
+        </span>
+        <CopyBit text={items.join("\n")} />
       </h3>
       {items.length === 0 ? (
         <div className="lane-sheet" aria-hidden />
@@ -299,7 +309,8 @@ function Lane({
               key={`${item}-${index}`}
               style={{ animationDelay: `${index * 55}ms` }}
             >
-              {item}
+              <span className="lane-text">{item}</span>
+              <CopyBit text={item} ghost />
             </li>
           ))}
         </ul>

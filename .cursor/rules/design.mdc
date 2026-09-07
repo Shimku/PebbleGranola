@@ -1,0 +1,24 @@
+---
+description: Visual and product bar for Index × Granola. Apply on any UI, copy, or product-shape change.
+alwaysApply: true
+---
+
+# Index × Granola
+
+This is a working instrument, not a landing page. The bar is Linear, Granola, and a YC company that ships: cream paper, olive, Newsreader, yellow highlighter, steel, red Index cap. Every surface should feel like a physical object. Sexy, useful, practical. If it looks like AI slop, redo it.
+
+## Objects
+
+- Afterthought is a Granola note (cream, olive spine, live yellow highlighter).
+- Prep me is one Index e-paper card (steel rim, red INDEX).
+- What I owe is a You / Them ledger with ruled columns. The name field is an optional filter, not a form.
+- Pair the ring stays in the steel side panel.
+
+One object per tool. No WebGL, no spinning torus, no clipped 3D, no card stacks.
+
+## Chrome
+
+- Copy is the word Copy, then Copied. No icons, toasts, emoji, or "Copied to clipboard!".
+- No sample utterances, fake ledger rows, or marketing blurbs in the feature UI.
+- No purple AI, no Inter-on-white SaaS, no gradient orbs, no delight microcopy.
+- No em dashes (U+2014). Use an en dash, a comma, or a new sentence.
