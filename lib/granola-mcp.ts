@@ -6,11 +6,25 @@ type JsonRpc =
   | { jsonrpc: "2.0"; id: number; method: string; params?: unknown }
   | { jsonrpc: "2.0"; method: string; params?: unknown };
 
+export const GRANOLA_TIMEOUT = "GRANOLA_TIMEOUT";
+
+const DEFAULT_TIMEOUT_MS = 12_000;
+const QUERY_TIMEOUT_MS = 20_000;
+
 type Session = {
   token: string;
   id?: string;
   ready: boolean;
 };
+
+export function isGranolaTimeout(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return (
+    error.message === GRANOLA_TIMEOUT ||
+    error.name === "AbortError" ||
+    /aborted|abort/.test(error.message)
+  );
+}
 
 let session: Session | null = null;
 
@@ -35,7 +49,12 @@ async function parseMcpResponse(response: Response): Promise<unknown> {
   return JSON.parse(raw) as unknown;
 }
 
-async function rpc(message: JsonRpc, token: string, sessionId?: string) {
+async function rpc(
+  message: JsonRpc,
+  token: string,
+  sessionId?: string,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+) {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
@@ -43,11 +62,24 @@ async function rpc(message: JsonRpc, token: string, sessionId?: string) {
   };
   if (sessionId) headers["Mcp-Session-Id"] = sessionId;
 
-  const response = await fetch(GRANOLA_MCP_URL, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(message),
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let response: Response;
+  try {
+    response = await fetch(GRANOLA_MCP_URL, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(message),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error(GRANOLA_TIMEOUT);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
 
   const nextSession = response.headers.get("mcp-session-id") ?? sessionId;
 
@@ -107,6 +139,10 @@ async function ensureSession(token: string): Promise<Session> {
   return next;
 }
 
+function timeoutForTool(name: string): number {
+  return name === "query_granola_meetings" ? QUERY_TIMEOUT_MS : DEFAULT_TIMEOUT_MS;
+}
+
 export async function callGranolaTool(
   name: string,
   args: Record<string, unknown> = {},
@@ -139,6 +175,7 @@ async function callWithToken(
     },
     token,
     active.id,
+    timeoutForTool(name),
   );
   return called.result;
 }

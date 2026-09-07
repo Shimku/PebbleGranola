@@ -119,6 +119,7 @@ async function handleCall(request: JsonRpcRequest): Promise<unknown> {
   }
 
   if (method === "tools/call") {
+    const started = Date.now();
     const name = typeof params.name === "string" ? params.name : "";
     const args =
       params.arguments && typeof params.arguments === "object"
@@ -126,8 +127,24 @@ async function handleCall(request: JsonRpcRequest): Promise<unknown> {
         : {};
     try {
       const result = await runTool(name, args);
+      console.log(
+        JSON.stringify({
+          mcp: "tools/call",
+          name,
+          ms: Date.now() - started,
+          ok: true,
+        }),
+      );
       return jsonRpcResult(id, pebbleResult(result.text, result.kind));
     } catch (error) {
+      console.log(
+        JSON.stringify({
+          mcp: "tools/call",
+          name,
+          ms: Date.now() - started,
+          ok: false,
+        }),
+      );
       return jsonRpcResult(id, {
         ...pebbleResult(toolErrorText(error), "prep"),
         isError: true,

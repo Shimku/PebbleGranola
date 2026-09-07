@@ -1,5 +1,7 @@
 import {
+  actionLinesFromNotes,
   askGranola,
+  excerptMeetingNotes,
   getMeetingDetails,
   granolaAccountInfo,
   listRecentMeetings,
@@ -24,7 +26,7 @@ Routing:
 - todos: they want open deliverables / what they owe.
 
 If they name a person, company, client, or product, pass it as meeting_hint or who_or_topic.
-If they say "last meeting", "the call I just had", or name nothing, omit the hint so we use the most recent Granola note.
+If they say "last meeting", "the call I just had", or name nothing, omit the hint and use scope "last".
 If they say "last call with X" use scope "last". If they say "this week" or "all meetings with X" use scope "recent".
 Visual canvas / Sorta pitches are Granola notes titled like "Sorta<>Name Xxx". If they say visual canvas, Sorta, or a Sorta<> title, pass those words through. Use scope "pitch" for coaching.`;
 
@@ -80,18 +82,20 @@ export const TOOLS = [
   {
     name: "todos",
     description:
-      "Open deliverables from Granola notes. Use for what do I need to do, action items, what I owe, follow-ups.",
+      "Open deliverables from Granola notes. Use for what did I promise, what do I need to do, action items, what I owe, follow-ups.",
     inputSchema: {
       type: "object",
       properties: {
         who_or_topic: {
           type: "string",
-          description: "Client, person, or project. Omit for this week's open loops.",
+          description:
+            "Client, person, or project. Omit for the most recent meeting.",
         },
         scope: {
           type: "string",
           enum: ["last", "recent"],
-          description: "last = latest matching meeting. recent = this week / several meetings. Default recent.",
+          description:
+            "last = latest matching meeting, including 'last meeting'. recent = this week / several meetings. Default last.",
         },
       },
     },
@@ -111,6 +115,10 @@ function str(value: unknown): string {
 
 function asMode(value: unknown, fallback: MatchMode): MatchMode {
   return value === "last" || value === "recent" ? value : fallback;
+}
+
+function ringText(raw: string, fallback: string, max = 380): string {
+  return clipForRing(raw, max) || clipForRing(fallback, max);
 }
 
 async function matchedMeetings(
@@ -181,7 +189,7 @@ async function runAfterthought(args: Record<string, unknown>): Promise<ToolRun> 
     `1) which meeting you used (title + date)`,
     `2) two lines of what Granola already captured`,
     `3) the afterthought woven in, clearly marked as new`,
-    `No markdown. No preamble.`,
+    `No markdown. No preamble. No chain of thought.`,
   ].join("\n");
 
   const raw = await askGranola(
@@ -191,8 +199,13 @@ async function runAfterthought(args: Record<string, unknown>): Promise<ToolRun> 
   const prefix = meetings[0]
     ? `Idea added to ${meetings[0].title}.`
     : "Idea added.";
-  const body = clipForRing(raw, 380 - prefix.length - 1);
-  const text = `${prefix} ${body}`.trim();
+  const fallback = `${prefix} New: ${thought}`;
+  const woven = ringText(
+    raw,
+    excerptMeetingNotes(details, 400),
+    380 - prefix.length - 1,
+  );
+  const text = clipForRing(woven ? `${prefix} ${woven}` : fallback);
   const title = meetings[0]?.title ?? "Afterthought";
 
   await insertCapture({
@@ -225,7 +238,7 @@ async function runPrep(args: Record<string, unknown>): Promise<ToolRun> {
           ? `Prefer these notes:\n${summarizeMeetingsForPrompt(meetings)}`
           : `Search my last 30 days of Granola notes for this idea.`,
         `Coach me in 6 short lines: what to repeat, what to avoid, one sharp opener, one thing I keep forgetting.`,
-        `Be specific to my notes, not generic pitch advice. No markdown.`,
+        `Be specific to my notes, not generic pitch advice. No markdown. No chain of thought.`,
       ].join("\n")
     : [
         `Prep me in 30 seconds for: ${topic}.`,
@@ -235,14 +248,22 @@ async function runPrep(args: Record<string, unknown>): Promise<ToolRun> {
         meetings.length
           ? `Matched notes:\n${summarizeMeetingsForPrompt(meetings)}`
           : `If nothing matches that name, say so in one line, then use the closest notes.`,
-        `Cover: last decision, open loops, names I will forget, what not to reopen. No markdown.`,
+        `Cover: last decision, open loops, names I will forget, what not to reopen. No markdown. No chain of thought.`,
       ].join("\n");
 
+  const details = meetings.length
+    ? await getMeetingDetails(meetings.map((meeting) => meeting.id))
+    : null;
   const raw = await askGranola(
     query,
     meetings.map((meeting) => meeting.id),
   );
-  const text = clipForRing(raw);
+  const fallback =
+    excerptMeetingNotes(details) ||
+    (meetings[0]
+      ? `Last matching note: ${meetings[0].title}. Granola did not finish a brief in time.`
+      : `No Granola notes matched "${topic}" in the last 30 days.`);
+  const text = ringText(raw, fallback);
   const title = meetings[0]?.title ?? topic;
 
   await insertCapture({
@@ -252,7 +273,7 @@ async function runPrep(args: Record<string, unknown>): Promise<ToolRun> {
     input: topic,
     output: text,
     meeting_ids: meetings.map((meeting) => meeting.id),
-    source: { granola: raw, pitch },
+    source: { granola: raw, pitch, details },
   });
 
   return { kind: "prep", text, title, meetings };
@@ -260,35 +281,45 @@ async function runPrep(args: Record<string, unknown>): Promise<ToolRun> {
 
 async function runTodos(args: Record<string, unknown>): Promise<ToolRun> {
   const topic = str(args.who_or_topic) || str(args.meeting_hint) || undefined;
-  const mode = asMode(args.scope, "recent");
+  const mode = asMode(args.scope, "last");
   const meetings = await matchedMeetings(topic, mode);
 
   const query = [
     topic
       ? `What do I still owe from conversations about ${topic}?`
-      : `What do I still owe from my Granola notes this week?`,
+      : mode === "last"
+        ? `What did I promise or still owe from my most recent Granola meeting?`
+        : `What do I still owe from my Granola notes this week?`,
     meetings.length
       ? `Prefer these notes:\n${summarizeMeetingsForPrompt(meetings)}`
       : `Search the last 30 days.`,
     `Split MY open items vs THEIRS. One line each. Skip completed work.`,
-    `If a date was mentioned, keep it. Max 6 lines. No markdown.`,
+    `If a date was mentioned, keep it. Max 6 lines. No markdown. No chain of thought. Answer only.`,
   ].join("\n");
 
+  const details = meetings.length
+    ? await getMeetingDetails(meetings.map((meeting) => meeting.id))
+    : null;
   const raw = await askGranola(
     query,
     meetings.map((meeting) => meeting.id),
   );
-  const text = clipForRing(raw);
+  const fallback =
+    actionLinesFromNotes(details) ||
+    (meetings[0]
+      ? `Last note: ${meetings[0].title}. Granola did not finish extracting promises in time. Try once more.`
+      : "No Granola notes in the last 30 days.");
+  const text = ringText(raw, fallback);
   const title = meetings[0]?.title ?? topic ?? "Open loops";
 
   await insertCapture({
     kind: "todos",
     title,
     hint: topic ?? null,
-    input: topic ?? "this week",
+    input: topic ?? (mode === "last" ? "last meeting" : "this week"),
     output: text,
     meeting_ids: meetings.map((meeting) => meeting.id),
-    source: { granola: raw },
+    source: { granola: raw, details },
   });
 
   return { kind: "todos", text, title, meetings };
@@ -302,24 +333,18 @@ export function toolErrorText(error: unknown): string {
       "Granola is not connected. Open the Index x Granola site and tap Connect Granola.",
     );
   }
+  if (message === "GRANOLA_TIMEOUT" || /timeout|aborted/i.test(message)) {
+    return clipForRing("Granola took too long. Try that again in a moment.");
+  }
   return clipForRing(message);
 }
 
-export function pebbleResult(text: string, kind: CaptureKind) {
-  const semanticResult =
-    kind === "afterthought"
-      ? {
-          type: "ListItemCreation",
-          content: text,
-          listUsed: "Granola afterthoughts",
-        }
-      : { type: "Response", text };
-
+export function pebbleResult(text: string, _kind?: CaptureKind) {
   return {
     content: [{ type: "text", text }],
     structuredContent: {
       output: text,
-      semanticResult,
+      semanticResult: { type: "Response", text },
     },
     _meta: { coreSchema: 1 },
   };
