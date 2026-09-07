@@ -28,11 +28,21 @@ export function isPromptEcho(line: string): boolean {
   return false;
 }
 
+export function isUnusableAnswer(line: string): boolean {
+  if (isPromptEcho(line)) return true;
+  if (/i don['’]?t have the notes/i.test(line)) return true;
+  if (/notes for that conversation available here/i.test(line)) return true;
+  if (/no meeting notes are available/i.test(line)) return true;
+  if (/no matching granola note/i.test(line)) return true;
+  if (/^last (matching )?note:/i.test(line.trim())) return true;
+  return false;
+}
+
 function dropEchoLines(text: string): string {
   return text
     .split(/\n+/)
     .map((line) => line.trim())
-    .filter((line) => line && !isPromptEcho(line) && !REASONING_LINE.test(line))
+    .filter((line) => line && !isUnusableAnswer(line) && !REASONING_LINE.test(line))
     .join("\n")
     .trim();
 }
@@ -60,7 +70,7 @@ export function granolaAnswer(text: string): string {
     .filter(Boolean);
   const kept = blocks.filter((block) => !REASONING_LINE.test(block));
   const body = (kept.length ? kept : blocks).join("\n").trim();
-  return isPromptEcho(body) ? "" : body;
+  return isUnusableAnswer(body) ? "" : body;
 }
 
 export function clipForRing(text: string, max = RING_MAX): string {

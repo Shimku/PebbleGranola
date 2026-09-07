@@ -251,6 +251,26 @@ export function summaryFromMarkup(raw: string): string {
   return formatGranolaSummary(match[1]);
 }
 
+function meetingIdFromOpenTag(attrs: string): string {
+  const match = attrs.match(/\bid\s*=\s*"([^"]*)"/i);
+  return match?.[1]?.trim() ?? "";
+}
+
+export function summariesByMeetingId(details: unknown): Record<string, string> {
+  if (!details) return {};
+  const decoded = decodeHtmlEntities(extractToolText(details));
+  const found: Record<string, string> = {};
+  const re = /<meeting\b([^>]*)>([\s\S]*?)<\/meeting>/gi;
+  let match: RegExpExecArray | null = re.exec(decoded);
+  while (match) {
+    const id = meetingIdFromOpenTag(match[1] ?? "");
+    const inner = summaryFromMarkup(match[2] ?? "");
+    if (id && inner) found[id] = inner;
+    match = re.exec(decoded);
+  }
+  return found;
+}
+
 function collectNoteText(value: unknown, into: string[], depth = 0): void {
   if (depth > 6 || !value) return;
   if (typeof value === "string") {
