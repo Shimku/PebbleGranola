@@ -1,4 +1,4 @@
-import { granolaAnswer } from "./text.ts";
+import { granolaAnswer, isPromptEcho } from "./text.ts";
 
 const MAX_BULLETS = 4;
 const MAX_LINE = 140;
@@ -6,33 +6,60 @@ const MAX_LINE = 140;
 const HEADER =
   /^(open items?|mine|theirs|you|them|their open items?|next steps?|action items?|follow[- ]ups?|prep|here(?:'|’)s what)\b[:\s.-]*/i;
 
-const PROMPT_ECHO =
-  /open loops, or names without guessing|names i will forget|what not to reopen|no markdown|no chain of thought|no preamble|max \d+|cover:|last decision|be specific to my notes/i;
+const SECTION =
+  /^(next steps?|summary|overview|discussion|notes|action items?|follow[- ]ups?|prep|open items?|theirs?|mine|you|them)$/i;
 
 const REASONING =
   /^(let me|the user asked|i'll |i will now|i should |searching |looking at |i need to |based on |i'm going to|focus on meetings|i'll read|let me read|idea added to <)/i;
+
+function clipLine(line: string): string {
+  if (line.length <= MAX_LINE) return line;
+  const cut = line.slice(0, MAX_LINE);
+  const space = cut.lastIndexOf(" ");
+  const clipped = (space > 40 ? cut.slice(0, space) : cut).trim();
+  return clipped;
+}
+
+function splitSentences(line: string): string[] {
+  if (line.length <= MAX_LINE) return [line];
+  const parts = line
+    .split(/(?<=[.!?])\s+(?=[A-Z])/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length <= 1) return [];
+  return parts.flatMap((part) => {
+    if (part.length <= MAX_LINE) return [part];
+    if (part.length <= 6) return [];
+    return [clipLine(part)];
+  });
+}
+
+function cleanLine(line: string): string {
+  return line
+    .replace(/^[-*•]\s+/, "")
+    .replace(/^\d+[.)]\s+/, "")
+    .replace(HEADER, "")
+    .trim();
+}
 
 export function bulletLines(text: string, max = MAX_BULLETS): string[] {
   const focused = granolaAnswer(text);
   const lines = focused
     .split(/\n+/)
-    .map((line) =>
-      line
-        .replace(/^[-*•]\s+/, "")
-        .replace(/^\d+[.)]\s+/, "")
-        .replace(HEADER, "")
-        .trim(),
-    )
+    .flatMap((line) => splitSentences(cleanLine(line)))
+    .map((line) => cleanLine(line))
     .filter(Boolean)
-    .filter((line) => !PROMPT_ECHO.test(line))
+    .filter((line) => !SECTION.test(line))
+    .filter((line) => !isPromptEcho(line))
     .filter((line) => !REASONING.test(line))
-    .filter((line) => line.length > 6 && line.length <= MAX_LINE);
+    .filter((line) => line.length > 6);
 
   const unique: string[] = [];
   for (const line of lines) {
-    const key = line.toLowerCase();
+    const clipped = clipLine(line);
+    const key = clipped.toLowerCase();
     if (unique.some((item) => item.toLowerCase() === key)) continue;
-    unique.push(line);
+    unique.push(clipped);
     if (unique.length >= max) break;
   }
   return unique;

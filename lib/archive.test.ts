@@ -125,3 +125,22 @@ test("afterthought summary is pulled from stored Granola XML", () => {
   assert.match(view.summary, /Set up CBRE intro call/);
   assert.doesNotMatch(view.summary, /<summary/);
 });
+
+test("prep cards recover notes when the stored output is a prompt echo", () => {
+  const view = viewFromCapture(
+    cap({
+      id: "echo",
+      kind: "prep",
+      title: "Interfaces Feedback",
+      hint: "interfaces",
+      input: "interfaces",
+      output: "open loops, and names in four short bullets.",
+      source: {
+        summary:
+          "Set up CBRE intro call for Thursday or Friday\nShare Q1 site list with Verve",
+      },
+    }),
+  );
+  assert.doesNotMatch(view.bullets.join("\n"), /four short bullets/i);
+  assert.match(view.bullets.join("\n"), /CBRE/);
+});

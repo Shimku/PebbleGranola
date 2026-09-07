@@ -1,13 +1,11 @@
-import { looksThin, ringBullets } from "./bullets";
+import { RING_INSTRUCTIONS, RING_PROMPT, TOOLS } from "./ring";
+import { ringBullets } from "./bullets";
 import {
-  actionLinesFromNotes,
-  askGranola,
-  excerptMeetingNotes,
   getMeetingDetails,
   granolaAccountInfo,
   listRecentMeetings,
   meetingSummary,
-  summarizeMeetingsForPrompt,
+  noteBrief,
 } from "./meetings";
 import {
   pickMeetings,
@@ -18,94 +16,7 @@ import { asRecord, asString, clipForRing } from "./text";
 import { insertCapture, setGranolaAccount, type CaptureKind } from "./store";
 import { cleanMeetingTitle, shortDate } from "./title";
 
-export const RING_INSTRUCTIONS = `You are answering through a Pebble Index 01 ring. The user only gets a short phone notification.
-
-Call exactly one tool, then read the tool output back almost verbatim. Do not add a preamble, markdown, or extra advice.
-
-Routing:
-- afterthought: they are adding a thought, forgotten point, or post-meeting note onto a Granola meeting.
-- prep: they want a 30-second briefing before a call, pitch, or conversation.
-- todos: they want open deliverables / what they owe.
-
-If they name a person, company, client, or product, pass it as meeting_hint or who_or_topic.
-If they say "last meeting", "the call I just had", or name nothing, omit the hint and use scope "last".
-If they say "last call with X" use scope "last". If they say "this week" or "all meetings with X" use scope "recent".
-Visual canvas / Sorta pitches are Granola notes titled like "Sorta<>Name Xxx". If they say visual canvas, Sorta, or a Sorta<> title, pass those words through. Use scope "pitch" for coaching.
-
-Never invent a meeting. If the tool says nothing matched, say that. Do not create an empty note.
-On a real match, Index files into Granola Thoughts (afterthought), Granola Catch Up (prep), or Granola To-Dos (owe).`;
-
-export const RING_PROMPT = {
-  name: "ring_voice",
-  title: "Index ring voice",
-  description: "How to talk to Granola from a Pebble Index 01",
-  arguments: [] as { name: string; description: string; required: boolean }[],
-};
-
-export const TOOLS = [
-  {
-    name: "afterthought",
-    description:
-      "Attach a spoken afterthought to a Granola meeting. Fetches that meeting's summary and files the new thought on top. Use after a call, when the user forgot to capture something.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        thought: {
-          type: "string",
-          description: "The user's new thought, verbatim.",
-        },
-        meeting_hint: {
-          type: "string",
-          description:
-            "Person, company, product, or meeting title. Omit to use the most recent Granola note.",
-        },
-      },
-      required: ["thought"],
-    },
-  },
-  {
-    name: "prep",
-    description:
-      "30-second briefing before a conversation. Use for prepare me, what should I know, what should I say or not say, remind me before this pitch or call.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        who_or_topic: {
-          type: "string",
-          description: "Person, company, client, product, or pitch topic.",
-        },
-        scope: {
-          type: "string",
-          enum: ["last", "recent", "pitch"],
-          description:
-            "last = most recent matching meeting. recent = a few recent matching meetings. pitch = coaching from Sorta<> / visual canvas recordings. Default last.",
-        },
-      },
-      required: ["who_or_topic"],
-    },
-  },
-  {
-    name: "todos",
-    description:
-      "Open deliverables from Granola notes. Use for what did I promise, what do I need to do, action items, what I owe, follow-ups.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        who_or_topic: {
-          type: "string",
-          description:
-            "Client, person, or project. Omit for the most recent meeting.",
-        },
-        scope: {
-          type: "string",
-          enum: ["last", "recent"],
-          description:
-            "last = latest matching meeting, including 'last meeting'. recent = this week / several meetings. Default last.",
-        },
-      },
-    },
-  },
-];
+export { RING_INSTRUCTIONS, RING_PROMPT, TOOLS };
 
 export type ToolRun = {
   kind: CaptureKind;
@@ -246,21 +157,10 @@ async function briefFromNotes(
   details: unknown,
   heading: string,
   fallback: string,
+  preferActions = false,
 ): Promise<string> {
-  const local =
-    actionLinesFromNotes(details) || excerptMeetingNotes(details, 900);
+  const local = noteBrief(details, preferActions);
   return ringBullets(local, heading, fallback);
-}
-
-async function maybeAsk(
-  query: string,
-  ids: string[],
-  heading: string,
-  local: string,
-): Promise<string> {
-  if (!looksThin(local) || !ids.length) return local;
-  const raw = await askGranola(query, ids);
-  return ringBullets(raw, heading, local);
 }
 
 async function runPrep(args: Record<string, unknown>): Promise<ToolRun> {
@@ -300,31 +200,7 @@ async function runPrep(args: Record<string, unknown>): Promise<ToolRun> {
   const fallback = meetings[0]
     ? `Last matching note: ${title}.`
     : `No Granola notes matched "${topic}" in the last 30 days.`;
-  const local = await briefFromNotes(details, "PREP", fallback);
-  const query = pitch
-    ? [
-        `Coach me in 4 short bullets for: ${topic}.`,
-        meetings.length
-          ? `Prefer these notes:\n${summarizeMeetingsForPrompt(meetings)}`
-          : `Search my last 30 days of Granola notes for this idea.`,
-        `What to repeat, what to avoid, one opener. No markdown. No chain of thought.`,
-      ].join("\n")
-    : [
-        `Prep me in 4 short bullets for: ${topic}.`,
-        `Use the MOST RECENT matching Granola note.`,
-        meetings.length
-          ? `Matched notes:\n${summarizeMeetingsForPrompt(meetings)}`
-          : `If nothing matches, say so in one line.`,
-        `Last decision, open loops, names. No markdown. No chain of thought.`,
-      ].join("\n");
-  const text = clipForRing(
-    await maybeAsk(
-      query,
-      meetings.map((meeting) => meeting.id),
-      "PREP",
-      local,
-    ),
-  );
+  const text = clipForRing(await briefFromNotes(details, "PREP", fallback));
 
   await insertCapture({
     kind: "prep",
@@ -376,23 +252,8 @@ async function runTodos(args: Record<string, unknown>): Promise<ToolRun> {
   const fallback = meetings[0]
     ? `Last note: ${title}.`
     : "No Granola notes in the last 30 days.";
-  const local = await briefFromNotes(details, "OPEN ITEMS", fallback);
-  const query = [
-    topic
-      ? `What do I still owe from conversations about ${topic}?`
-      : `What did I promise from my most recent Granola meeting?`,
-    meetings.length
-      ? `Prefer these notes:\n${summarizeMeetingsForPrompt(meetings)}`
-      : `Search the last 30 days.`,
-    `MY open items only unless theirs are blocking. One line each. Max 4 bullets. No markdown. No chain of thought.`,
-  ].join("\n");
   const text = clipForRing(
-    await maybeAsk(
-      query,
-      meetings.map((meeting) => meeting.id),
-      "OPEN ITEMS",
-      local,
-    ),
+    await briefFromNotes(details, "OPEN ITEMS", fallback, true),
   );
 
   await insertCapture({

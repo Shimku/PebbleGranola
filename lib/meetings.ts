@@ -12,6 +12,7 @@ export {
   excerptMeetingNotes,
   meetingsFromUnknown,
   meetingSummary,
+  noteBrief,
   summaryFromMarkup,
 } from "./meeting-parse";
 

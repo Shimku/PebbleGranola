@@ -328,3 +328,12 @@ export function meetingSummary(details: unknown): string {
     .slice(0, 2800)
     .trim();
 }
+
+export function noteBrief(details: unknown, preferActions = false): string {
+  if (!details) return "";
+  if (preferActions) {
+    const actions = actionLinesFromNotes(details);
+    if (actions) return actions;
+  }
+  return meetingSummary(details) || excerptMeetingNotes(details, 2000);
+}

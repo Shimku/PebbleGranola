@@ -28,12 +28,38 @@ const SKIP_WORDS = new Set([
   "this",
   "that",
   "meeting",
+  "meetings",
   "call",
   "notes",
   "next",
   "last",
   "about",
   "week",
+  "prep",
+  "prepped",
+  "prepare",
+  "prepared",
+  "briefing",
+  "brief",
+  "owe",
+  "owed",
+  "they",
+  "them",
+  "their",
+  "what",
+  "does",
+  "should",
+  "know",
+  "remind",
+  "reminder",
+  "promise",
+  "promised",
+  "action",
+  "items",
+  "follow",
+  "ups",
+  "conversation",
+  "conversations",
 ]);
 
 function normalize(value: string): string {
@@ -63,10 +89,15 @@ export function looksLikeVisualCanvasHint(hint: string): boolean {
   return false;
 }
 
-function hintWords(hint: string): string[] {
+export function hintWords(hint: string): string[] {
   return normalize(hint)
     .split(" ")
     .filter((part) => part.length > 2 && !SKIP_WORDS.has(part));
+}
+
+export function spokenNeedle(hint: string): string {
+  const words = hintWords(hint);
+  return words.join(" ") || normalize(hint);
 }
 
 function titleRight(title: string): string {
@@ -144,7 +175,7 @@ export function scoreMeeting(
   hint: string,
   preferSorta = false,
 ): number {
-  const needle = normalize(hint);
+  const needle = spokenNeedle(hint);
   const visual = looksLikeVisualCanvasHint(hint) || preferSorta;
   if (!needle && !visual) return 0;
 

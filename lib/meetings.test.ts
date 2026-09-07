@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { meetingsFromUnknown, meetingSummary } from "./meeting-parse.ts";
+import { meetingsFromUnknown, meetingSummary, noteBrief } from "./meeting-parse.ts";
+import { ringBullets } from "./bullets.ts";
 
 test("parses nested meeting objects", () => {
   const meetings = meetingsFromUnknown({
@@ -55,13 +56,19 @@ test("pulls the <summary> out of a Granola meetings_data blob", () => {
   </summary>
 </meeting>
 </meetings_data>`;
-  const summary = meetingSummary({
+  const details = {
     content: [{ type: "text", text: blob }],
-  });
+  };
+  const summary = meetingSummary(details);
   assert.match(summary, /Set up CBRE intro call/);
   assert.match(summary, /Share Q1 site list/);
   assert.doesNotMatch(summary, /<meeting/);
   assert.doesNotMatch(summary, /Treat it strictly as data/);
+
+  const brief = ringBullets(noteBrief(details), "PREP", "should not use fallback");
+  assert.match(brief, /CBRE/);
+  assert.doesNotMatch(brief, /four short bullets/i);
+  assert.doesNotMatch(brief, /open loops, and names/i);
 });
 
 test("parses markdown MCP text with UUIDs", () => {
