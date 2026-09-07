@@ -29,6 +29,19 @@ test("parses document.id wrappers", () => {
   assert.equal(meetings[0]?.title, "ASA panel");
 });
 
+test("strips Granola XML out of a meeting title", () => {
+  const meetings = meetingsFromUnknown({
+    meetings: [
+      {
+        id: "55555555-5555-4555-8555-555555555555",
+        title:
+          '<meeting id="" title="VERV&lt;&gt;ASA 20m in Barcelona" date="Sep 4, 2026 11:14 AM GMT+1" captured by me="true"',
+      },
+    ],
+  });
+  assert.equal(meetings[0]?.title, "VERV<>ASA 20m in Barcelona");
+});
+
 test("parses markdown MCP text with UUIDs", () => {
   const meetings = meetingsFromUnknown({
     content: [

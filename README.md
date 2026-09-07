@@ -10,23 +10,23 @@ Built as a one-take demo for X. Free Granola is enough. Notes older than 30 days
 
 ## What it does
 
-Three tools, one double-click on the ring:
+Three tools, one double-click on the ring. The website is a **read-only archive**. The ring is the only writer. New asks append under a company thread. They do not replace the last one.
 
-1. **Afterthought** – You already captured a meeting in Granola. Later you remember something. We fetch that note, weave your new thought in, save the blend **on this website**, and send a push like “idea added to [meeting].” That combo is the product. Granola is not modified. If Pebble also creates a list item, great; we do not depend on it.
-2. **Prep me** – “Prep me for Acme” or “prep me for the visual canvas pitch.” We look up matching Granola notes from the last 30 days. Visual canvas / Sorta pitches are notes titled like `Sorta<>Name Xxx`. If you name a company or person, we use the **most recent** matching meeting, not all ten. Say “this week” or “all meetings with X” for a wider recap. Pitch wording asks Granola to coach from those recordings: what to repeat, what not to say.
-3. **What I owe** – Open loops from this week or from one client. Mine vs theirs. Dates kept when Granola had them.
+1. **Afterthought** – Fetch the Granola meeting summary, put the spoken thought on top, show that on this site. The ring notification is two lines: which meeting, then the thought. Granola is not modified.
+2. **Prep me** – A few bullets before a call. Newest matching note, not an essay.
+3. **What I owe** – Open loops. Mine vs theirs. Four bullets max, same text in the push notification and on the site.
 
-Calendar / Gmail reminders are **not** in this build. Too much extra OAuth for a flex video. If a date is in the notes, it stays in the notification. Single-click on Index can still create a normal Pebble reminder.
+Index lists (Shopping, Notes, Granola thoughts / todos / catch up) are a second tree you already have in the Pebble app. We reply in the Index thread and keep the folder here. We do not write an empty Index note when a name misses.
 
-## How meeting lookup works
+## How it finds, extracts, and presents
 
-1. `list_meetings` over `last_30_days` (free-tier window).
-2. Score title + attendees against the words you spoke. `Sorta<>Name Xxx` titles split on `<>`, so “visual canvas”, “Sorta”, or the name on the right-hand side all match.
-3. Default: **most recent match**. Ten meetings with the same startup → the last one.
-4. Then `query_granola_meetings` limited to those note IDs, with a prompt that demands a ring-sized answer.
-5. We clip to ~380 characters so a lock-screen notification stays readable.
+**Find.** `list_meetings` over `last_30_days`. Score the cleaned title and attendees against the words you spoke. Titles like `VERV<>ASA` match “Verve” / “verv” on the left of `<>`. Close spellings (Bonbon / Bonvan) still hit. If you named a company and nothing scores, we say so and stop. We do not glue your ask onto a random latest meeting.
 
-If the name does not match a title, Granola Chat still searches. The notification will say when we are guessing.
+Granola sometimes stores the title as a `<meeting title="…">` blob. We pull `title=` out before matching or showing anything.
+
+**Extract.** `get_meetings` for that note’s summary and action lines. Local bullets first. Granola Chat (`query_granola_meetings`) only if the note is too thin. Chain of thought and prompt echoes are stripped.
+
+**Present.** MCP `Response` with a few bullets (or two lines for an afterthought). That is the Index notification. The same record is stored and grouped on this site by thread (VERV, Bonbon, …) then by tab.
 
 ## Prerequisites
 
@@ -43,7 +43,7 @@ You do **not** need a paid Granola plan, the Granola API, or write access.
 
 | Surface | Role |
 | --- | --- |
-| This website | Connect Granola, copy Pebble settings, rehearse without the ring, browse combined afterthought notes |
+| This website | Connect Granola, copy Pebble settings, browse the thread archive |
 | `POST /mcp` | Streamable HTTP MCP for the Pebble cloud agent (protocol 2025-06-18, Bearer auth, no OAuth) |
 | Pebble Answers | The notification you read on the phone or watch |
 | Granola | Source of truth. Never written to |
@@ -59,7 +59,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000), tap **Connect Granola**, then use **Rehearse without the ring**.
+Open [http://localhost:3000](http://localhost:3000), tap **Connect Granola**.
 
 If you used a neon.new database, open the claim URL on the homepage within 72 hours or the data disappears.
 
@@ -75,15 +75,11 @@ If you used a neon.new database, open the claim URL on the homepage within 72 ho
 4. Index tab settings → **Double click and hold** → this sandbox.
 5. Leave **single click** as the normal local notes/reminders path.
 
-Say, while holding the double-click:
-
-- “Add this to the last meeting: we should send the deck before Thursday.”
-- “Prep me for my next pitch of the visual canvas. What should I say and what should I not say?”
-- “What do I need to do from this week’s client meetings?”
+The website does not have a Run button. Speak from the ring.
 
 ## Environment
 
-`DATABASE_URL` is a Postgres connection string. The app is not a static page: it stores your Granola login tokens and the combined afterthought notes. **Neon** is that Postgres (serverless, fine for this demo).
+`DATABASE_URL` is a Postgres connection string. The app is not a static page: it stores your Granola login tokens and the archive. **Neon** is that Postgres (serverless, fine for this demo).
 
 If we used [neon.new](https://neon.new) to spin one up instantly, it dies after **72 hours** unless you open the claim URL on the homepage and attach it to a Neon account.
 

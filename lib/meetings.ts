@@ -11,6 +11,7 @@ export {
   actionLinesFromNotes,
   excerptMeetingNotes,
   meetingsFromUnknown,
+  meetingSummary,
 } from "./meeting-parse";
 
 export async function listRecentMeetings(): Promise<MeetingHit[]> {

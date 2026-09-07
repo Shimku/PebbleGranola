@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  formatMeetingLabel,
   isSortaTitle,
   looksLikeVisualCanvasHint,
   pickMeetings,
@@ -73,4 +74,37 @@ test("Sorta titles outscore random meetings for a canvas hint", () => {
     scoreMeeting(sortaNew, "visual canvas") >
       scoreMeeting(random, "visual canvas"),
   );
+});
+
+const vervXml = hit(
+  "v",
+  '<meeting id="" title="VERV&lt;&gt;ASA 20m in Barcelona" date="Sep 4, 2026 11:14 AM GMT+1" captured by me="true"',
+  "2026-09-04T10:14:00Z",
+);
+const bonvan = hit("b", "Bonvan intro", "2026-09-03T15:00:00Z");
+
+test("spoken Verve matches VERV<>ASA even when the title is XML", () => {
+  const picked = pickMeetings([vervXml, amazon, random], "Verve", "last");
+  assert.equal(picked[0]?.id, "v");
+});
+
+test("typed verv still matches VERV", () => {
+  const picked = pickMeetings([vervXml, amazon], "verv", "last");
+  assert.equal(picked[0]?.id, "v");
+});
+
+test("Bonbon fuzzy-matches a Bonvan title", () => {
+  const picked = pickMeetings([bonvan, amazon, random], "Bonbon", "last");
+  assert.equal(picked[0]?.id, "b");
+});
+
+test("an unknown company does not fall back to a random meeting", () => {
+  const picked = pickMeetings(all, "Bonbon", "last");
+  assert.equal(picked.length, 0);
+});
+
+test("formatMeetingLabel does not dump XML", () => {
+  const label = formatMeetingLabel(vervXml);
+  assert.match(label, /VERV<>ASA/);
+  assert.doesNotMatch(label, /<meeting/);
 });

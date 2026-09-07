@@ -1,5 +1,10 @@
 import type { MeetingHit } from "./match";
 import { asRecord, asString, extractToolText } from "./text.ts";
+import {
+  cleanMeetingDate,
+  cleanMeetingTitle,
+  looksLikeMeetingMarkup,
+} from "./title.ts";
 
 const UUID_RE =
   /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
@@ -17,7 +22,22 @@ const SKIP_NOTE_KEYS = new Set([
   "url",
   "type",
   "jsonrpc",
+  "title",
+  "name",
 ]);
+
+const PREFERRED_NOTE_KEYS = [
+  "summary",
+  "notes",
+  "note",
+  "markdown",
+  "recap",
+  "overview",
+  "action_items",
+  "actionItems",
+  "next_steps",
+  "transcript_summary",
+];
 
 function collectAttendees(value: unknown): string[] {
   if (!value) return [];
@@ -42,6 +62,8 @@ function collectAttendees(value: unknown): string[] {
 function collectDate(record: Record<string, unknown>): string | null {
   const calendar = asRecord(record.calendar_event);
   const document = asRecord(record.document);
+  const rawTitle =
+    asString(record.title) || asString(record.name) || asString(document?.title);
   return (
     asString(record.date) ||
     asString(record.created_at) ||
@@ -51,7 +73,7 @@ function collectDate(record: Record<string, unknown>): string | null {
     asString(calendar?.start_time) ||
     asString(calendar?.starts_at) ||
     asString(document?.created_at) ||
-    null
+    cleanMeetingDate(rawTitle, null)
   );
 }
 
@@ -82,14 +104,15 @@ function asMeeting(value: unknown): MeetingHit | null {
     asId(record.uuid) ||
     asId(document);
   if (!id) return null;
+  const rawTitle =
+    asString(record.title) ||
+    asString(record.name) ||
+    asString(record.summary) ||
+    asString(document?.title) ||
+    "";
   return {
     id,
-    title:
-      asString(record.title) ||
-      asString(record.name) ||
-      asString(record.summary) ||
-      asString(document?.title) ||
-      "Untitled meeting",
+    title: cleanMeetingTitle(rawTitle) || "Untitled meeting",
     date: collectDate(record),
     attendees: collectAttendees(
       record.attendees ?? record.participants ?? record.people,
@@ -106,11 +129,13 @@ function meetingsFromText(text: string): MeetingHit[] {
     const id = match[0];
     if (seen.has(id)) continue;
     seen.add(id);
-    const title = line
-      .replace(UUID_RE, "")
-      .replace(/[|`*_#>-]/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
+    const title = cleanMeetingTitle(
+      line
+        .replace(UUID_RE, "")
+        .replace(/[|`*_#>-]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim(),
+    );
     found.push({
       id,
       title: title || "Untitled meeting",
@@ -196,11 +221,19 @@ export function meetingsFromUnknown(value: unknown): MeetingHit[] {
   return single ? [single] : [];
 }
 
+function isJunkNote(value: string): boolean {
+  const trimmed = value.trim();
+  if (trimmed.length < 12) return true;
+  if (looksLikeMeetingMarkup(trimmed)) return true;
+  if (/^\{[\s\S]*\}$/.test(trimmed) && trimmed.includes('"id"')) return true;
+  return false;
+}
+
 function collectNoteText(value: unknown, into: string[], depth = 0): void {
   if (depth > 6 || !value) return;
   if (typeof value === "string") {
     const trimmed = value.trim();
-    if (trimmed.length > 20) into.push(trimmed);
+    if (!isJunkNote(trimmed)) into.push(trimmed);
     return;
   }
   if (Array.isArray(value)) {
@@ -209,8 +242,18 @@ function collectNoteText(value: unknown, into: string[], depth = 0): void {
   }
   const record = asRecord(value);
   if (!record) return;
+
+  let preferred = false;
+  for (const key of PREFERRED_NOTE_KEYS) {
+    if (record[key] == null) continue;
+    collectNoteText(record[key], into, depth + 1);
+    preferred = true;
+  }
+  if (preferred && into.length) return;
+
   for (const [key, nested] of Object.entries(record)) {
     if (SKIP_NOTE_KEYS.has(key)) continue;
+    if (PREFERRED_NOTE_KEYS.includes(key)) continue;
     collectNoteText(nested, into, depth + 1);
   }
 }
@@ -229,11 +272,25 @@ export function actionLinesFromNotes(details: unknown): string {
   const lines = excerpt
     .split(/\n+/)
     .map((line) => line.replace(/^[-*•]\s+/, "").trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter((line) => !looksLikeMeetingMarkup(line));
   const hits = lines.filter((line) =>
-    /action|todo|follow[- ]up|owe|send |schedule |i will|i'll |next step|promise|deliver/i.test(
+    /action|todo|follow[- ]up|owe|send |schedule |i will|i'll |next step|promise|deliver|intro call|share /i.test(
       line,
     ),
   );
-  return (hits.length ? hits.slice(0, 8) : lines.slice(0, 8)).join("\n");
+  return (hits.length ? hits.slice(0, 4) : lines.slice(0, 4)).join("\n");
+}
+
+export function meetingSummary(details: unknown): string {
+  const excerpt = excerptMeetingNotes(details, 1800);
+  if (!excerpt) return "";
+  return excerpt
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter((block) => !looksLikeMeetingMarkup(block))
+    .slice(0, 4)
+    .join("\n\n")
+    .slice(0, 1200)
+    .trim();
 }
