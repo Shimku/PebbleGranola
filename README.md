@@ -10,13 +10,13 @@ Built as a one-take demo for X. Free Granola is enough. Notes older than 30 days
 
 ## What it does
 
-Three tools, one double-click on the ring. The website is a **read-only archive**. The ring is the only writer. New asks append under a company thread. They do not replace the last one.
+Three tools, one double-click on the ring. The website is an archive. The ring is the writer. New asks append under a company thread. Remove a card with **Remove**, or clear a thread with **×** on the selected chip.
 
-1. **Afterthought** – Fetch the Granola meeting summary, put the spoken thought on top, show that on this site. The ring notification is two lines: which meeting, then the thought. Granola is not modified.
-2. **Prep me** – A few bullets before a call. Newest matching note, not an essay.
-3. **What I owe** – Open loops. Mine vs theirs. Four bullets max, same text in the push notification and on the site.
+1. **Afterthought** – Granola meeting summary with the spoken thought on top. Filed into **Granola Thoughts** in Index when the meeting matches.
+2. **Prep me** – A few bullets before a call. Filed into **Granola Catch Up**.
+3. **What I owe** – Open loops, mine vs theirs. Filed into **Granola To-Dos**.
 
-Index lists (Shopping, Notes, Granola thoughts / todos / catch up) are a second tree you already have in the Pebble app. We reply in the Index thread and keep the folder here. We do not write an empty Index note when a name misses.
+A named miss does not write an empty Index note. Pairing stays behind **Pair** once Granola is connected.
 
 ## How it finds, extracts, and presents
 

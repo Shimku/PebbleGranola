@@ -3,6 +3,7 @@ import { asRecord, asString, extractToolText } from "./text.ts";
 import {
   cleanMeetingDate,
   cleanMeetingTitle,
+  decodeHtmlEntities,
   looksLikeMeetingMarkup,
 } from "./title.ts";
 
@@ -224,15 +225,41 @@ export function meetingsFromUnknown(value: unknown): MeetingHit[] {
 function isJunkNote(value: string): boolean {
   const trimmed = value.trim();
   if (trimmed.length < 12) return true;
-  if (looksLikeMeetingMarkup(trimmed)) return true;
+  if (/^the content below is meeting notes/i.test(trimmed) && !/<summary/i.test(trimmed)) {
+    return true;
+  }
+  if (looksLikeMeetingMarkup(trimmed) && !/<summary[\s>]/i.test(trimmed)) return true;
   if (/^\{[\s\S]*\}$/.test(trimmed) && trimmed.includes('"id"')) return true;
   return false;
+}
+
+export function formatGranolaSummary(inner: string): string {
+  return decodeHtmlEntities(inner)
+    .replace(/\r\n/g, "\n")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/\*\*/g, "")
+    .replace(/^[ \t]+/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+export function summaryFromMarkup(raw: string): string {
+  if (!raw) return "";
+  const decoded = decodeHtmlEntities(raw);
+  const match = decoded.match(/<summary\b[^>]*>([\s\S]*?)<\/summary>/i);
+  if (!match?.[1]) return "";
+  return formatGranolaSummary(match[1]);
 }
 
 function collectNoteText(value: unknown, into: string[], depth = 0): void {
   if (depth > 6 || !value) return;
   if (typeof value === "string") {
     const trimmed = value.trim();
+    const fromXml = summaryFromMarkup(trimmed);
+    if (fromXml) {
+      into.push(fromXml);
+      return;
+    }
     if (!isJunkNote(trimmed)) into.push(trimmed);
     return;
   }
@@ -283,14 +310,21 @@ export function actionLinesFromNotes(details: unknown): string {
 }
 
 export function meetingSummary(details: unknown): string {
-  const excerpt = excerptMeetingNotes(details, 1800);
+  if (!details) return "";
+  const extracted = extractToolText(details);
+  const fromXml = summaryFromMarkup(extracted);
+  if (fromXml) return fromXml.slice(0, 2800).trim();
+
+  const excerpt = excerptMeetingNotes(details, 2800);
   if (!excerpt) return "";
+  const nested = summaryFromMarkup(excerpt);
+  if (nested) return nested.slice(0, 2800).trim();
   return excerpt
     .split(/\n{2,}/)
     .map((block) => block.trim())
     .filter((block) => !looksLikeMeetingMarkup(block))
-    .slice(0, 4)
+    .slice(0, 6)
     .join("\n\n")
-    .slice(0, 1200)
+    .slice(0, 2800)
     .trim();
 }

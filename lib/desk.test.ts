@@ -25,6 +25,15 @@ test("OPEN ITEMS and THEIR OPEN ITEMS split", () => {
   assert.deepEqual(them, ["Pick UK sites"]);
 });
 
+test("chain of thought does not become an open item", () => {
+  const { you, them } = splitLedger([
+    "(Mon Sep 7, 2020). Let me focus on meetings from this week",
+    "Set up CBRE intro call",
+  ]);
+  assert.deepEqual(you, ["Set up CBRE intro call"]);
+  assert.deepEqual(them, []);
+});
+
 test("deskFromCaptures uses the newest of each kind", () => {
   const desk = deskFromCaptures([
     {

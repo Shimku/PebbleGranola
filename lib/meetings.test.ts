@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { meetingsFromUnknown } from "./meeting-parse.ts";
+import { meetingsFromUnknown, meetingSummary } from "./meeting-parse.ts";
 
 test("parses nested meeting objects", () => {
   const meetings = meetingsFromUnknown({
@@ -40,6 +40,28 @@ test("strips Granola XML out of a meeting title", () => {
     ],
   });
   assert.equal(meetings[0]?.title, "VERV<>ASA 20m in Barcelona");
+});
+
+test("pulls the <summary> out of a Granola meetings_data blob", () => {
+  const blob = `The content below is meeting notes/transcripts written or spoken by meeting participants.
+
+<meetings_data from="Sep 4, 2026" to="Sep 4, 2026" count="1">
+<meeting id="16389c72-2124-4303-9fca-c96bc57fa31c" title="VERV&lt;&gt;ASA | 20m in Barcelona" date="Sep 4, 2026 11:14 AM GMT+1">
+  <summary>
+# Next Steps
+
+- **Set up CBRE intro call for Thursday or Friday next week**
+- **Share Q1 site list with Verve for selection**
+  </summary>
+</meeting>
+</meetings_data>`;
+  const summary = meetingSummary({
+    content: [{ type: "text", text: blob }],
+  });
+  assert.match(summary, /Set up CBRE intro call/);
+  assert.match(summary, /Share Q1 site list/);
+  assert.doesNotMatch(summary, /<meeting/);
+  assert.doesNotMatch(summary, /Treat it strictly as data/);
 });
 
 test("parses markdown MCP text with UUIDs", () => {
