@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, type KeyboardEvent } from "react";
+import { splitLedger } from "@/lib/ledger";
 
 export type Mode = "afterthought" | "prep" | "todos";
 
@@ -323,7 +324,8 @@ function IndexRun({
       className={`index-run ${busy ? "is-busy" : ""}`}
       disabled={disabled}
       onClick={onRun}
-      aria-label={busy ? "Running" : "Run"}
+      aria-label={busy ? "Running" : "Run without the ring"}
+      title="Without the ring"
     >
       <span className={`index-cap ${busy ? "is-live" : ""}`} aria-hidden />
       <span>Run</span>
@@ -337,58 +339,4 @@ function resultLines(result: string | null) {
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
-}
-
-const YOU_HEADER = /^(you|yours|me|my items?|i owe|owed by me)\b[:\s-]*/i;
-const THEM_HEADER = /^(them|theirs|they|their items?|waiting on|owed to me)\b[:\s-]*/i;
-
-export function splitLedger(lines: string[]) {
-  const you: string[] = [];
-  const them: string[] = [];
-  let lane: "you" | "them" | null = null;
-
-  for (const raw of lines) {
-    const line = raw.replace(/^[-•*]\s*/, "");
-    if (YOU_HEADER.test(line) && line.replace(YOU_HEADER, "").trim().length < 2) {
-      lane = "you";
-      const rest = line.replace(YOU_HEADER, "").trim();
-      if (rest) you.push(rest);
-      continue;
-    }
-    if (
-      THEM_HEADER.test(line) &&
-      line.replace(THEM_HEADER, "").trim().length < 2
-    ) {
-      lane = "them";
-      const rest = line.replace(THEM_HEADER, "").trim();
-      if (rest) them.push(rest);
-      continue;
-    }
-    if (YOU_HEADER.test(line)) {
-      lane = "you";
-      const rest = line.replace(YOU_HEADER, "").trim();
-      if (rest) you.push(rest);
-      continue;
-    }
-    if (THEM_HEADER.test(line)) {
-      lane = "them";
-      const rest = line.replace(THEM_HEADER, "").trim();
-      if (rest) them.push(rest);
-      continue;
-    }
-
-    const theirs = /\b(they|them|their|waiting on)\b/i.test(line);
-    const mine = /\b(i |i'm|i owe|send|my |need to)\b/i.test(line);
-    if (theirs && !mine) {
-      them.push(line);
-      lane = "them";
-    } else if (lane === "them") {
-      them.push(line);
-    } else {
-      you.push(line);
-      lane = "you";
-    }
-  }
-
-  return { you, them };
 }
