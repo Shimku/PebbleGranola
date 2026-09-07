@@ -280,10 +280,7 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
               </li>
               <li>Double click and hold → this sandbox.</li>
               <li>
-                Afterthoughts go to{" "}
-                <span className="pair-emph">Granola Thoughts</span>, prep to{" "}
-                <span className="pair-emph">Granola Catch Up</span>, owe to{" "}
-                <span className="pair-emph">Granola To-Dos</span>.
+                The phone notification is the notes. This site is the archive.
               </li>
             </ol>
             <CopyField

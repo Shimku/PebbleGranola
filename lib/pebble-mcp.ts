@@ -135,7 +135,7 @@ async function handleCall(request: JsonRpcRequest): Promise<unknown> {
           ok: true,
         }),
       );
-      return jsonRpcResult(id, pebbleResult(result.text, result.kind, result.listUsed));
+      return jsonRpcResult(id, pebbleResult(result.text));
     } catch (error) {
       console.log(
         JSON.stringify({
@@ -146,7 +146,7 @@ async function handleCall(request: JsonRpcRequest): Promise<unknown> {
         }),
       );
       return jsonRpcResult(id, {
-        ...pebbleResult(toolErrorText(error), "prep"),
+        ...pebbleResult(toolErrorText(error)),
         isError: true,
       });
     }

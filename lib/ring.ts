@@ -13,8 +13,9 @@ If they say "last meeting", "the call I just had", or name nothing, omit the hin
 If they say "last call with X" use scope "last". If they say "this week" or "all meetings with X" use scope "recent".
 Visual canvas / Sorta pitches are Granola notes titled like "Sorta<>Name Xxx". If they say visual canvas, Sorta, or a Sorta<> title, pass those words through. Use scope "pitch" for coaching.
 
-Never invent a meeting. If the tool says nothing matched, read that line back. Do not create an empty note.
-On a real match, Index files into Granola Thoughts (afterthought), Granola Catch Up (prep), or Granola To-Dos (owe).`;
+Never invent a meeting. If the tool says nothing matched, read that line back.
+
+Do not create an Index list item, note, reminder, or calendar event. Those lists stay empty. The website already archived the result. Read the tool output back almost verbatim, with no preamble, so the phone notification is the notes themselves.`;
 
 export const RING_PROMPT = {
   name: "ring_voice",

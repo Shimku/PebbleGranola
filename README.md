@@ -12,11 +12,11 @@ Built as a one-take demo for X. Free Granola is enough. Notes older than 30 days
 
 Three tools, one double-click on the ring. The website is an archive. The ring is the writer. New asks append under a company thread. Remove a card with **Remove**, or clear a thread with **×** on the selected chip.
 
-1. **Afterthought** – Granola meeting summary with the spoken thought on top. Filed into **Granola Thoughts** in Index when the meeting matches.
-2. **Prep me** – A few bullets before a call. Filed into **Granola Catch Up**.
-3. **What I owe** – Open loops, mine vs theirs. Filed into **Granola To-Dos**.
+1. **Afterthought** – Granola meeting summary with the spoken thought on top.
+2. **Prep me** – A few bullets before a call.
+3. **What I owe** – Open loops, mine vs theirs.
 
-A named miss does not write an empty Index note. Pairing stays behind **Pair** once Granola is connected.
+A named miss does not invent a meeting. Pairing stays behind **Pair** once Granola is connected. The phone notification is the notes themselves, not an Index list action. This site is the archive.
 
 ## How it finds, extracts, and presents
 
@@ -24,7 +24,7 @@ A named miss does not write an empty Index note. Pairing stays behind **Pair** o
 
 Granola sometimes stores the title as a `<meeting title="…">` blob. We pull `title=` out before matching or showing anything.
 
-**Extract.** `get_meetings` for that note’s summary and action lines. Local bullets first. Granola Chat (`query_granola_meetings`) only if the note is too thin. Chain of thought and prompt echoes are stripped.
+**Extract.** `get_meetings` for that note’s `<summary>`. Local bullets only. Prompt echoes and “notes unavailable” bluffs are dropped.
 
 **Present.** MCP `Response` with a few bullets (or two lines for an afterthought). That is the Index notification. The same record is stored and grouped on this site by thread (VERV, Bonbon, …) then by tab.
 
