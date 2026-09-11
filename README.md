@@ -34,7 +34,7 @@ You need:
 
 - Index 01 paired with the Pebble app
 - A free Granola account with some notes in the last 30 days (a real meeting, a pitch recording, anything)
-- 2 minutes on this site to Connect Granola
+- 2 minutes on this site: sign in, then Connect Granola
 - 2 minutes in Pebble to paste the MCP URL + Bearer token
 
 You do **not** need a paid Granola plan, the Granola API, or write access.
@@ -54,18 +54,18 @@ This is the home repo for the project.
 
 ```bash
 cp .env.example .env.local
-# put a Postgres URL in DATABASE_URL
+# put a Postgres URL in DATABASE_URL and a SITE_PASSWORD
 npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000), tap **Connect Granola**.
+Open [http://localhost:3000](http://localhost:3000), sign in, tap **Connect Granola**.
 
 If you used a neon.new database, open the claim URL on the homepage within 72 hours or the data disappears.
 
 ## Pebble app settings
 
-1. Connect Granola on the website.
+1. Sign in, then Connect Granola on the website.
 2. Pebble app → Index → **MCP & Tool Settings** → create a sandbox group. Model: **Default** or **High Capability** (cloud). The offline Index agent cannot use custom MCP.
 3. **MCP Servers** → add one:
    - URL: `https://YOUR-DOMAIN/mcp`
@@ -86,9 +86,20 @@ If we used [neon.new](https://neon.new) to spin one up instantly, it dies after 
 | Name | Required | Notes |
 | --- | --- | --- |
 | `DATABASE_URL` | yes | Neon Postgres connection string |
+| `SITE_PASSWORD` | yes | Locks the website (archive, Pair, Connect). 8+ characters. `/mcp` stays open. |
 | `NEON_CLAIM_URL` | no | Shown in the UI so you can keep a neon.new database |
-| `PEBBLE_MCP_TOKEN` | no | Generated and stored on first boot if unset |
+| `PEBBLE_MCP_TOKEN` | no | Generated and stored on first boot if unset. If set, it wins over the DB token. |
 | `APP_URL` | no | Defaults to the current host. Set this if OAuth redirects to the wrong place |
+
+## Security (single tenant)
+
+This is a personal proxy, not a multi-user app. One Granola login, one ring token, one password. If you open source it, each person deploys their own instance.
+
+The public URL is safe to share only after `SITE_PASSWORD` is set. Visitors see a lock screen. The archive, Granola email, and Bearer token are not in that HTML.
+
+`POST /mcp` stays reachable so the Pebble cloud agent can call it. That path uses the ring Bearer only. Do **not** turn on Vercel Deployment Protection / SSO on production. Pebble can only send `Authorization`, so a Vercel login wall would kill the ring.
+
+If a token ever appeared on a public page or in a recording, rotate it (`Pair` → Rotate token, or change `PEBBLE_MCP_TOKEN` and redeploy), then paste the new Bearer in Pebble.
 
 ## Why not point Pebble at mcp.granola.ai?
 

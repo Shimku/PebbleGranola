@@ -2,6 +2,7 @@ import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
 import { randomBytes } from "node:crypto";
 import { slimCapture } from "./archive";
 import { databaseUrl, envPebbleToken, neonClaimUrl } from "./config";
+import { resolvePebbleToken } from "./secret.ts";
 
 type Sql = NeonQueryFunction<false, false>;
 
@@ -127,10 +128,21 @@ export async function setGranolaAccount(value: GranolaAccount): Promise<void> {
 
 export async function getPebbleToken(): Promise<string> {
   const existing = await getSetting<string>("pebble_token");
-  if (typeof existing === "string" && existing.length > 16) return existing;
+  const stored = typeof existing === "string" ? existing : null;
+  const resolved = resolvePebbleToken(stored, envPebbleToken(), () =>
+    randomBytes(32).toString("hex"),
+  );
+  if (resolved.persist) await setSetting("pebble_token", resolved.token);
+  return resolved.token;
+}
 
-  const fromEnv = envPebbleToken();
-  const token = fromEnv ?? randomBytes(32).toString("hex");
+export async function rotatePebbleToken(): Promise<string> {
+  if (envPebbleToken()) {
+    throw new Error(
+      "PEBBLE_MCP_TOKEN is set in the environment. Change it there and redeploy.",
+    );
+  }
+  const token = randomBytes(32).toString("hex");
   await setSetting("pebble_token", token);
   return token;
 }
@@ -265,6 +277,7 @@ export async function getStatusPayload(appUrl: string) {
     connected,
     account,
     pebbleToken,
+    pebbleTokenLocked: Boolean(envPebbleToken()),
     mcpUrl: `${appUrl}/mcp`,
     appUrl,
     captures: captures.map(slimCapture),

@@ -1095,6 +1095,62 @@ div.lane-sheet {
   color: #8f8f88;
 }
 
+.pair-token-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.9rem;
+}
+
+.gate-shell {
+  padding-bottom: 3rem;
+}
+
+.gate-panel {
+  margin-top: 1.25rem;
+  max-width: 26rem;
+}
+
+.gate-panel h1 {
+  margin-top: 0.28rem;
+  font-size: 1.35rem;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  color: #fff;
+}
+
+.gate-copy {
+  margin-top: 0.55rem;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: #b5b5ae;
+}
+
+.gate-copy code {
+  font-family: var(--font-mono), ui-monospace, "IBM Plex Mono", monospace;
+  font-size: 0.78rem;
+  color: #e6e6e0;
+}
+
+.gate-form {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 1.1rem;
+}
+
+.gate-form input {
+  min-height: 2.65rem;
+  padding: 0 0.85rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: rgba(0, 0, 0, 0.42);
+  color: #e6e6e0;
+}
+
+.gate-form .olive-btn {
+  justify-self: start;
+}
+
 .notes {
   margin-top: 1.85rem;
 }

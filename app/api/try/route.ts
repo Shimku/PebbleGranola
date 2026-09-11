@@ -1,3 +1,4 @@
+import { requireDashboard } from "@/lib/site-auth";
 import { getGranolaOAuth } from "@/lib/store";
 import { runTool, toolErrorText } from "@/lib/tools";
 
@@ -6,6 +7,9 @@ export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  const blocked = requireDashboard(request);
+  if (blocked) return blocked;
+
   if (!(await getGranolaOAuth())) {
     return Response.json(
       { error: "Connect Granola first." },

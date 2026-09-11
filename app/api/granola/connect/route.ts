@@ -1,12 +1,24 @@
 import { appUrlFromRequest, MISSING_DB_MESSAGE } from "@/lib/config";
 import { startGranolaConnect } from "@/lib/granola-oauth";
+import { requireDashboard } from "@/lib/site-auth";
 import { hasDatabaseUrl } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request) {
+async function start(request: Request) {
   const appUrl = appUrlFromRequest(request);
+  const blocked = requireDashboard(request);
+  if (blocked) {
+    if (request.headers.get("accept")?.includes("application/json")) {
+      return blocked;
+    }
+    return Response.redirect(
+      `${appUrl}/?error=${encodeURIComponent("Sign in first.")}`,
+      302,
+    );
+  }
+
   if (!hasDatabaseUrl()) {
     return Response.redirect(
       `${appUrl}/?error=${encodeURIComponent(MISSING_DB_MESSAGE)}`,
@@ -24,4 +36,12 @@ export async function GET(request: Request) {
       302,
     );
   }
+}
+
+export async function GET(request: Request) {
+  return start(request);
+}
+
+export async function POST(request: Request) {
+  return start(request);
 }

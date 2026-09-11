@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   capturesInThread,
   threadsFromCaptures,
@@ -15,6 +16,7 @@ export type StatusPayload = {
   connected: boolean;
   hasDatabase: boolean;
   pebbleToken: string;
+  pebbleTokenLocked: boolean;
   mcpUrl: string;
   appUrl: string;
   captures: Capture[];
@@ -32,6 +34,8 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
   const [error, setError] = useState<string | null>(initial.error ?? null);
   const [copied, setCopied] = useState<string | null>(null);
   const [showPair, setShowPair] = useState(!initial.connected);
+  const [showToken, setShowToken] = useState(false);
+  const router = useRouter();
   const pinned = useRef(false);
   const pairRef = useRef<HTMLElement | null>(null);
 
@@ -55,6 +59,8 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
       void refreshStatus();
     }, 2800);
     return () => window.clearInterval(tick);
+    // Poll while the tab is visible. refreshStatus reads latest state via setStatus.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -65,6 +71,10 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
 
   async function refreshStatus() {
     const response = await fetch("/api/status", { cache: "no-store" });
+    if (response.status === 401) {
+      router.refresh();
+      return;
+    }
     const json = (await response.json()) as StatusPayload;
     const nextCaptures = json.captures ?? [];
     setStatus((prev) => ({
@@ -87,6 +97,32 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
   async function disconnect() {
     await fetch("/api/granola/disconnect", { method: "POST" });
     setShowPair(true);
+    await refreshStatus();
+  }
+
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.refresh();
+  }
+
+  async function rotateToken() {
+    if (
+      !window.confirm(
+        "This breaks the ring until you paste the new Bearer token in Pebble. Rotate anyway?",
+      )
+    ) {
+      return;
+    }
+    const response = await fetch("/api/pebble-token", { method: "POST" });
+    const json = (await response.json()) as {
+      pebbleToken?: string;
+      error?: string;
+    };
+    if (!response.ok) {
+      setError(json.error || "Could not rotate the token.");
+      return;
+    }
+    setShowToken(true);
     await refreshStatus();
   }
 
@@ -146,9 +182,11 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
               Disconnect
             </button>
           ) : status.hasDatabase ? (
-            <a href="/api/granola/connect" className="olive-btn">
-              Connect Granola
-            </a>
+            <form action="/api/granola/connect" method="post">
+              <button type="submit" className="olive-btn">
+                Connect Granola
+              </button>
+            </form>
           ) : (
             <button
               type="button"
@@ -159,6 +197,9 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
               Connect Granola
             </button>
           )}
+          <button type="button" className="text-link" onClick={() => void logout()}>
+            Sign out
+          </button>
         </div>
       </header>
 
@@ -291,12 +332,44 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
             />
             <CopyField
               label="Authorization"
-              value={status.pebbleToken ? `Bearer ${status.pebbleToken}` : ""}
-              copied={copied === "token"}
-              onCopy={() =>
-                void copy("token", `Bearer ${status.pebbleToken}`)
+              value={
+                status.pebbleToken
+                  ? showToken
+                    ? `Bearer ${status.pebbleToken}`
+                    : "Bearer ••••••••• (copy to reveal)"
+                  : ""
               }
+              copied={copied === "token"}
+              onCopy={() => {
+                setShowToken(true);
+                void copy("token", `Bearer ${status.pebbleToken}`);
+              }}
             />
+            <div className="pair-token-actions">
+              {status.pebbleToken && !showToken ? (
+                <button
+                  type="button"
+                  className="text-link pair-hide"
+                  onClick={() => setShowToken(true)}
+                >
+                  Reveal token
+                </button>
+              ) : null}
+              {status.pebbleTokenLocked ? (
+                <p className="pair-status">
+                  Token is pinned by PEBBLE_MCP_TOKEN. Change it in env to
+                  rotate.
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  className="text-link pair-hide"
+                  onClick={() => void rotateToken()}
+                >
+                  Rotate token
+                </button>
+              )}
+            </div>
             {status.connected ? (
               <button
                 type="button"

@@ -35,7 +35,7 @@ export function neonClaimUrl(): string | null {
 
 export function envPebbleToken(): string | null {
   const token = process.env.PEBBLE_MCP_TOKEN?.trim();
-  return token ? token : null;
+  return token && token.length > 16 ? token : null;
 }
 
 export function appUrlFromRequest(request?: Request): string {
