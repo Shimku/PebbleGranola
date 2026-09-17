@@ -1,4 +1,5 @@
 import { appUrlFromRequest, MISSING_DB_MESSAGE } from "@/lib/config";
+import { requireDashboard } from "@/lib/site-auth";
 import { getStatusPayload, hasDatabaseUrl } from "@/lib/store";
 
 export const runtime = "nodejs";
@@ -8,6 +9,7 @@ const EMPTY_STATUS = {
   connected: false,
   hasDatabase: false,
   pebbleToken: "",
+  pebbleTokenLocked: false,
   mcpUrl: "",
   appUrl: "",
   captures: [],
@@ -16,6 +18,9 @@ const EMPTY_STATUS = {
 };
 
 export async function GET(request: Request) {
+  const blocked = requireDashboard(request);
+  if (blocked) return blocked;
+
   if (!hasDatabaseUrl()) {
     return Response.json({
       ...EMPTY_STATUS,
