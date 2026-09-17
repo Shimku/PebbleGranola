@@ -1,26 +1,37 @@
+![Index × Granola](public/og.png)
+
 # Index × Granola
 
-Pebble Index 01 cannot speak Granola’s browser OAuth. Granola MCP will not take a static Bearer. This tiny Next.js app is the translator.
+The phone notification is the notes. This site is the archive.
 
-Sign in once on the site. Paste one MCP URL into Pebble. Double-click the ring for prep, what you owe, or an afterthought. The phone notification is the notes. The site is the archive. Granola stays read-only.
+Double-click and hold Index 01. Afterthought, prep, or what you owe, from Granola, as a Pebble notification. Sign in on the site. Paste one MCP URL into the Pebble app. Granola stays read-only.
 
-This is a **personal proxy**. One Granola login, one ring, one password. Deploy your own. It is not a multi-user host, and it is not affiliated with Pebble or Granola.
+One Granola login, one ring, one password. Deploy your own. Not a multi-user host. Not affiliated with Pebble or Granola.
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Shimku/PebbleGranola&env=SITE_PASSWORD,DATABASE_URL&envDescription=SITE_PASSWORD%20locks%20the%20archive%20(8%2B%20chars).%20DATABASE_URL%20is%20a%20Neon%20Postgres%20url.&project-name=index-granola&repository-name=index-granola)
 
-Free Granola is enough. Notes older than 30 days are out of scope on purpose.
+Free Granola is enough. Matching only looks at the last 30 days.
 
-## What it does
+## Pair the ring
 
-Three tools, one double-click on the ring. New asks append under a company thread.
+You need an Index 01 in the Pebble app, and a Granola account with some notes in the last 30 days.
 
-1. **Afterthought** – Granola meeting summary with the spoken thought on top.
-2. **Prep me** – A few bullets before a call.
-3. **What I owe** – Open loops, mine vs theirs.
+1. Deploy, sign in, tap **Connect Granola**.
+2. Pebble app → Index → **MCP & Tool Settings** → new sandbox. Model: **Default** or **High Capability** (cloud). The offline Index agent cannot use custom MCP.
+3. Add MCP. Streamable HTTP on. URL and Bearer from **Pair**.
+4. Enable the `ring_voice` prompt.
+5. **Double click and hold** → this sandbox.
+6. Leave single click as local notes.
 
-A named miss does not invent a meeting. Pairing stays behind **Pair** once Granola is connected.
+There is no Run button on the website. Speak from the ring.
 
-## Deploy your own
+Pebble custom MCP only sends a static `Authorization` header. Granola MCP only speaks browser OAuth. That is why this app exists.
+
+Do **not** put Vercel Deployment Protection or SSO on the production domain. The ring cannot send `x-vercel-protection-bypass`, so a login wall on `your-app.vercel.app` kills `/mcp`.
+
+Do turn on Vercel Authentication for **Production deployment URLs and all previews**. Unique `*.vercel.app` aliases keep serving whatever code that deploy shipped. If that code is older than the lock screen, it will still read the live database and dump the dashboard, token, and notes to anyone with the URL.
+
+## Deploy
 
 1. Click **Deploy with Vercel** above (or fork this repo and import it).
 2. Create a [Neon](https://neon.tech) Postgres database. Paste its URL into `DATABASE_URL`.
@@ -28,32 +39,7 @@ A named miss does not invent a meeting. Pairing stays behind **Pair** once Grano
 4. Deploy. Open the site, sign in, tap **Connect Granola**.
 5. Copy the MCP URL and Bearer from **Pair**. Paste them into Pebble.
 
-Do **not** turn on Vercel Deployment Protection or SSO on production. Pebble can only send `Authorization`, so a Vercel login wall would kill the ring.
-
-| Surface | Role |
-| --- | --- |
-| The website | Connect Granola, copy Pebble settings, browse the thread archive |
-| `POST /mcp` | Streamable HTTP MCP for the Pebble cloud agent (Bearer auth, no OAuth) |
-| Pebble Answers | The notification you read on the phone |
-| Granola | Source of truth. Never written to |
-
-## Pebble app settings
-
-You need an Index 01 paired with the Pebble app, and a free Granola account with some notes in the last 30 days.
-
-1. Sign in, then Connect Granola on the website.
-2. Pebble app → Index → **MCP & Tool Settings** → create a sandbox group. Model: **Default** or **High Capability** (cloud). The offline Index agent cannot use custom MCP.
-3. **MCP Servers** → add one:
-   - URL: `https://YOUR-DOMAIN/mcp`
-   - Streamable: **on**
-   - Authorization: `Bearer …` (copy from the site, include the word Bearer)
-   - Prompts: enable `ring_voice`
-4. Index tab settings → **Double click and hold** → this sandbox.
-5. Leave **single click** as the normal local notes/reminders path.
-
-The website does not have a Run button. Speak from the ring.
-
-## Local run
+## Local
 
 ```bash
 cp .env.example .env.local
@@ -75,27 +61,19 @@ If you used [neon.new](https://neon.new), open the claim URL on the site within 
 | `PEBBLE_MCP_TOKEN` | no | Generated on first boot if unset. If set, it wins over the DB token. |
 | `APP_URL` | no | Defaults to the current host. Set this if OAuth redirects to the wrong place |
 
-## How it finds, extracts, and presents
+## Matching
 
-**Find.** `list_meetings` over `last_30_days`. Score the cleaned title and attendees against the words you spoke. Titles like `VERV<>ASA` match “Verve” / `verv` on the left of `<>`. Close spellings (Bonbon / Bonvan) still hit. If you named a company and nothing scores, we say so and stop.
+`list_meetings` over `last_30_days`. Score the cleaned title and attendees against the words you spoke. Titles like `VERV<>ASA` match “Verve” / `verv` on the left of `<>`. Close spellings still hit. If you named a company and nothing scores, we say so and stop.
 
-Granola sometimes stores the title as a `<meeting title="…">` blob. We pull `title=` out before matching or showing anything.
-
-**Extract.** `get_meetings` for that note’s `<summary>`. Local bullets only. Prompt echoes and “notes unavailable” bluffs are dropped.
-
-**Present.** MCP `Response` with a few bullets (or two lines for an afterthought). That is the Index notification. The same record is stored and grouped on this site by thread, then by tab.
-
-## Why not point Pebble at mcp.granola.ai?
-
-Pebble custom MCP only sends a static `Authorization` header. Granola MCP only speaks browser OAuth. The proxy is required, even though Cursor can talk to Granola MCP directly.
+Prep and What I owe can pull a few recent matches. Afterthoughts stick to the latest. The Index notification is a few bullets. The same record lands in the archive under a company thread.
 
 ## Security
 
-Each deploy is one locker. Set `SITE_PASSWORD` before you share the URL. Visitors see a lock screen. The archive, Granola email, and Bearer are not in that HTML.
+Each deploy is one locker. Set `SITE_PASSWORD` before you share the URL. Visitors see the lock screen. The archive, Granola email, and Bearer are not in that HTML.
 
-`POST /mcp` is reachable on purpose so the ring can call it. Anyone who has the Bearer can query your notes through that path. Rotate it under **Pair** if it ever leaked, then paste the new value in Pebble.
+`POST /mcp` is reachable on purpose so the ring can call it. Anyone who has the Bearer can query your notes through that path. Rotate it under **Pair** if it leaked, then paste the new value in Pebble.
 
-This app files afterthoughts next door on purpose. Granola has no write tool to put a hallway thought onto a meeting note.
+Treat an old public Bearer as burned. Rotating does not hide it from old unlocked Vercel aliases. Protect those aliases (or delete the deploys) first, then rotate.
 
 ## License
 
