@@ -50,10 +50,6 @@ export function Gate({ configured }: { configured: boolean }) {
       <section className="steel-panel gate-panel">
         <p className="kicker kicker-light">Personal instance</p>
         <h1>This archive is locked</h1>
-        <p className="gate-copy">
-          The ring still talks to <code>/mcp</code> with its Bearer token. Meeting
-          notes, afterthoughts, and pairing stay behind this password.
-        </p>
         {configured ? (
           <form className="gate-form" onSubmit={(event) => void submit(event)}>
             <label className="sr-only" htmlFor="site-password">
