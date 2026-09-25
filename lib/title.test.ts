@@ -8,14 +8,14 @@ import {
 } from "./title.ts";
 
 const xml =
-  '<meeting id="" title="VERV&lt;&gt;ASA 20m in Barcelona" date="Sep 4, 2026 11:14 AM GMT+1" captured by me="true" listed as participant="true" is workspace visible="false"';
+  '<meeting id="" title="ACME&lt;&gt;BETA 20m in Lisbon" date="Sep 4, 2026 11:14 AM GMT+1" captured by me="true" listed as participant="true" is workspace visible="false"';
 
 test("cleanMeetingTitle pulls title= out of Granola XML", () => {
-  assert.equal(cleanMeetingTitle(xml), "VERV<>ASA 20m in Barcelona");
+  assert.equal(cleanMeetingTitle(xml), "ACME<>BETA 20m in Lisbon");
 });
 
 test("cleanMeetingTitle leaves a normal title alone", () => {
-  assert.equal(cleanMeetingTitle("Amazon sync"), "Amazon sync");
+  assert.equal(cleanMeetingTitle("Northwind sync"), "Northwind sync");
 });
 
 test("cleanMeetingTitle drops generic fallbacks", () => {
@@ -25,8 +25,8 @@ test("cleanMeetingTitle drops generic fallbacks", () => {
 
 test("pairSides splits Left<>Right", () => {
   assert.deepEqual(pairSides(xml), {
-    left: "VERV",
-    right: "ASA 20m in Barcelona",
+    left: "ACME",
+    right: "BETA 20m in Lisbon",
   });
 });
 

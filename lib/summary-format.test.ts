@@ -22,7 +22,7 @@ App Feedback
 });
 
 test("markdown hashes are headings", () => {
-  const blocks = summaryBlocks(`# Next Steps\n- Set up CBRE intro call`);
+  const blocks = summaryBlocks(`# Next Steps\n- Set up the broker intro`);
   assert.equal(blocks[0]?.type, "heading");
   assert.equal(blocks[0]?.text, "Next Steps");
   assert.equal(blocks[1]?.type, "bullet");

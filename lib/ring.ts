@@ -7,7 +7,7 @@ Routing:
 - prep: prep me, prepped me, prepare me, briefing, what should I know before a call.
 - afterthought: a new thought or forgotten point to attach to a meeting.
 
-who_or_topic / meeting_hint is ONLY the person, company, client, or product. Pass Brad, Interfaces, Verve, or Bonbon, not the whole sentence.
+who_or_topic / meeting_hint is ONLY the person, company, client, or product they named. Pass that name, not the whole sentence.
 
 If they say "last meeting", "the call I just had", or name nothing, omit the hint and use scope "last".
 If they say "last call with X" use scope "last". If they say "this week" or "all meetings with X" use scope "recent".
@@ -55,7 +55,7 @@ export const TOOLS = [
         who_or_topic: {
           type: "string",
           description:
-            "Person, company, client, or product. Pass Brad or Interfaces, not the whole spoken sentence.",
+            "Person, company, client, or product. The name they said, not the whole spoken sentence.",
         },
         scope: {
           type: "string",
@@ -77,7 +77,7 @@ export const TOOLS = [
         who_or_topic: {
           type: "string",
           description:
-            "Client, person, or project. Pass Brad, not the whole sentence. Omit for the most recent meeting.",
+            "Client, person, or project. The name they said, not the whole sentence. Omit for the most recent meeting.",
         },
         scope: {
           type: "string",
