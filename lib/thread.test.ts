@@ -2,20 +2,20 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { threadLabel, UNFILED, sameThread, preferThreadLabel } from "./thread.ts";
 
-test("VERV<>ASA threads as VERV", () => {
+test("ACME<>BETA threads as ACME", () => {
   assert.equal(
     threadLabel({
       title:
-        '<meeting id="" title="VERV&lt;&gt;ASA 20m in Barcelona" date="Sep 4, 2026 11:14 AM GMT+1"',
+        '<meeting id="" title="ACME&lt;&gt;BETA 20m in Lisbon" date="Sep 4, 2026 11:14 AM GMT+1"',
     }),
-    "VERV",
+    "ACME",
   );
 });
 
 test("a spoken company still files when the title is missing", () => {
   assert.equal(
-    threadLabel({ title: null, hint: "Bonbon", spoken: "what do I owe Bonbon" }),
-    "Bonbon",
+    threadLabel({ title: null, hint: "Maple", spoken: "what do I owe Maple" }),
+    "Maple",
   );
 });
 
@@ -30,15 +30,15 @@ test("this week does not become a thread name", () => {
   );
 });
 
-test("Verve and VERV are the same thread", () => {
-  assert.equal(sameThread("VERV", "verve"), true);
-  assert.equal(sameThread("VERV", "Bonbon"), false);
-  assert.equal(preferThreadLabel("verve", "VERV"), "VERV");
+test("Acme and ACME are the same thread", () => {
+  assert.equal(sameThread("ACME", "acme"), true);
+  assert.equal(sameThread("ACME", "Maple"), false);
+  assert.equal(preferThreadLabel("acme", "ACME"), "ACME");
 });
 
 test("Sorta pitches keep the person", () => {
   assert.equal(
-    threadLabel({ title: "Sorta<>Nikita Xxx" }),
-    "Sorta · Nikita",
+    threadLabel({ title: "Sorta<>Alex Xxx" }),
+    "Sorta · Alex",
   );
 });
