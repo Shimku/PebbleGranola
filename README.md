@@ -25,11 +25,9 @@ You need an Index 01 in the Pebble app, and a Granola account with some notes in
 
 There is no Run button on the website. Speak from the ring.
 
-Pebble custom MCP only sends a static `Authorization` header. Granola MCP only speaks browser OAuth. That is why this app exists.
+Pebble custom MCP only sends a static `Authorization` header. Granola MCP only speaks browser OAuth.
 
-Do **not** put Vercel Deployment Protection or SSO on the production domain. The ring cannot send `x-vercel-protection-bypass`, so a login wall on `your-app.vercel.app` kills `/mcp`.
-
-Do turn on Vercel Authentication for **Production deployment URLs and all previews**. Unique `*.vercel.app` aliases keep serving whatever code that deploy shipped. If that code is older than the lock screen, it will still read the live database and dump the dashboard, token, and notes to anyone with the URL.
+Do **not** put Vercel Deployment Protection or SSO on the production domain. The ring cannot send `x-vercel-protection-bypass`.
 
 ## Deploy
 
@@ -63,7 +61,7 @@ If you used [neon.new](https://neon.new), open the claim URL on the site within 
 
 ## Matching
 
-`list_meetings` over `last_30_days`. Score the cleaned title and attendees against the words you spoke. Titles like `VERV<>ASA` match “Verve” / `verv` on the left of `<>`. Close spellings still hit. If you named a company and nothing scores, we say so and stop.
+Meetings from the last 30 days. Title and attendees scored against the words you spoke. `VERV<>ASA` matches “Verve”. Close spellings still hit. A named miss does not invent a meeting.
 
 Prep and What I owe can pull a few recent matches. Afterthoughts stick to the latest. The Index notification is a few bullets. The same record lands in the archive under a company thread.
 
@@ -71,9 +69,9 @@ Prep and What I owe can pull a few recent matches. Afterthoughts stick to the la
 
 Each deploy is one locker. Set `SITE_PASSWORD` before you share the URL. Visitors see the lock screen. The archive, Granola email, and Bearer are not in that HTML.
 
-`POST /mcp` is reachable on purpose so the ring can call it. Anyone who has the Bearer can query your notes through that path. Rotate it under **Pair** if it leaked, then paste the new value in Pebble.
+`POST /mcp` stays open for the ring. Anyone with the Bearer can query your notes that way. Rotate it under **Pair** if it leaked, then paste the new value in Pebble.
 
-Treat an old public Bearer as burned. Rotating does not hide it from old unlocked Vercel aliases. Protect those aliases (or delete the deploys) first, then rotate.
+Old unique `*.vercel.app` deploy URLs keep the code from that deploy. If that build is older than the lock, it can still read the live database. In Vercel: Authentication on **Production deployment URLs and all previews**, not the production domain.
 
 ## License
 

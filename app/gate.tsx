@@ -45,6 +45,16 @@ export function Gate({ configured }: { configured: boolean }) {
             <span className="font-serif-italic brand-granola">Granola</span>
           </p>
         </div>
+        <div className="header-actions">
+          <a
+            className="text-link"
+            href="https://github.com/Shimku/PebbleGranola"
+            target="_blank"
+            rel="noreferrer"
+          >
+            GitHub
+          </a>
+        </div>
       </header>
 
       <section className="steel-panel gate-panel">
