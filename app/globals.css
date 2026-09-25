@@ -1135,7 +1135,7 @@ div.lane-sheet {
 .gate-form {
   display: grid;
   gap: 0.7rem;
-  margin-top: 1.1rem;
+  margin-top: 1.15rem;
 }
 
 .gate-form input {

@@ -22,11 +22,28 @@ const mono = IBM_Plex_Mono({
   weight: ["400", "500"],
 });
 
+const siteUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+  : "http://localhost:3000";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "Index × Granola",
-  description:
-    "Pair Pebble Index 01 with Granola. Afterthoughts, prep, and open loops.",
+  description: "The phone notification is the notes. This site is the archive.",
   robots: { index: false, follow: false },
+  openGraph: {
+    title: "Index × Granola",
+    description: "The phone notification is the notes. This site is the archive.",
+    images: [
+      { url: "/og.png", width: 1200, height: 630, alt: "Index × Granola" },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Index × Granola",
+    description: "The phone notification is the notes. This site is the archive.",
+    images: ["/og.png"],
+  },
   appleWebApp: {
     capable: true,
     title: "Index × Granola",
@@ -38,7 +55,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f7f7f2",
+  themeColor: "#f4f3ec",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
