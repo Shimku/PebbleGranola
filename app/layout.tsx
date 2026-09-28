@@ -29,11 +29,11 @@ const siteUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: "Index × Granola",
-  description: "The phone notification is the notes. This site is the archive.",
+  description: "Ask your Granola notes from a Pebble Index 01.",
   robots: { index: false, follow: false },
   openGraph: {
     title: "Index × Granola",
-    description: "The phone notification is the notes. This site is the archive.",
+    description: "Ask your Granola notes from a Pebble Index 01.",
     images: [
       { url: "/og.png", width: 1200, height: 630, alt: "Index × Granola" },
     ],
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Index × Granola",
-    description: "The phone notification is the notes. This site is the archive.",
+    description: "Ask your Granola notes from a Pebble Index 01.",
     images: ["/og.png"],
   },
   appleWebApp: {

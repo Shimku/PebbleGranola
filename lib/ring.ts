@@ -15,7 +15,7 @@ Visual canvas / Sorta pitches are Granola notes titled like "Sorta<>Name Xxx". I
 
 Never invent a meeting. If the tool says nothing matched, read that line back.
 
-Do not create an Index list item, note, reminder, or calendar event. Those lists stay empty. The website already archived the result. Read the tool output back almost verbatim, with no preamble, so the phone notification is the notes themselves.`;
+Do not create an Index list item, note, reminder, or calendar event. Those lists stay empty. The website already stored the result. Read the tool output back almost verbatim, with no preamble. That text is what shows on the phone.`;
 
 export const RING_PROMPT = {
   name: "ring_voice",
