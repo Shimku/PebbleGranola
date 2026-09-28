@@ -321,7 +321,7 @@ export function Dashboard({ initial }: { initial: StatusPayload }) {
               </li>
               <li>Double click and hold → this sandbox.</li>
               <li>
-                The phone notification is the notes. This site is the archive.
+                Pebble shows the reply. Past replies stay on this page.
               </li>
             </ol>
             <CopyField
